@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Register</title>
+</head>
+<body>
+{{if eq .Show "ott"}}
+<h1>Welcome, {{.Name}}</h1>
+<p>Set your password below to get started</p>
+<form action="?ep=ott" method="post">
+<span>Password: </span><input type="password" name="password"/><br/>
+<input type="hidden" name="ott" value="{{.OTT}}"/>
+<input type="submit" value="Submit"/>
+</form>
+{{else if eq .Show "wn"}}
+<h1>Thank you for registering!</h1>
+<p>What's next?</p>
+<p>Check your inbox for a registration link that will get you started</p>
+{{else}}
+<h1>Hello!</h1>
+<p>We're excited you're joining us, get started by registering below.</p>
+<form action="?ep=reg" method="post">
+<span>Name: </span><input type="text" name="name"/><br/>
+<span>Email: </span><input type="email" name="email"/><br/>
+<input type="submit" value="Register"/>
+</form>
+{{end}}
+<p>Any complaints about the stylistic simplicity of this site? <a href="http://motherfuckingwebsite.com/">Learn more here</a></p>
+</body>
+</html>
