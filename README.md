@@ -177,3 +177,28 @@ upending the current winner. Once the vote has been locked, either via this
 endpoint or by the lock go routine, an email invitation will be sent out to
 everyone with a calendar invite to the winning showtime. They can then rsvp
 either by mail or by one of the links to the rsvp endpoint.
+
+Development
+---
+
+Movie Night uses a sqlite database to store all the data required. It uses
+https://github.com/mattn/go-sqlite3 to bind to the c apis. At the time we are
+planning to use the json1 extensions, in order to compile sqlite with this 
+extension use:
+
+	go build --tags "json1" -o movie-night main.go
+
+### Running
+
+Movie night has sane defaults in order to run the application locally while
+developing, but at some point you may want to actually turn off debugging, send
+emails to your users, etc. We suggest you use a bash script to set all the
+necissary flags and then use that to wrap your application. Here is an example:
+
+	#!/bin/sh
+
+	./movie-night -port=8080 -debug=false -buzz='https://domo.demo.domo.com/api/buzz/v1/integrations/push/abcde/f12345' -emailFrom='movienight@murphysean.com' -emailHost='gmail.com' -emailUser='example@gmail.com' -emailPass=supercool -weeklyDay=6 -weeklyHour=9 -weeklyMinute=0 -lockDay=2 -lockHour=16 -lockMinute=30 -salt='saltylakeut' -url='https://www.example.com/movie-night/'
+
+Say this script was called run.sh. Now you can run your application via:
+
+	./run.sh

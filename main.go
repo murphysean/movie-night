@@ -946,7 +946,7 @@ func SendRegistrationEmail(u *User, ott string) {
 		User   *User
 		Ott    string
 		UrlPre string
-	}{User: u, UrlPre: *url}
+	}{User: u, UrlPre: *appUrl}
 
 	emailHeaders := textproto.MIMEHeader{}
 	emailHeaders.Set("MIME-Version", "1.0")
@@ -967,7 +967,7 @@ func SendWeeklyEmail(to *User, standings []*Showtime, bow, eow time.Time) {
 		Standings []*Showtime
 		Voted     bool
 		UrlPre    string
-	}{User: to, Standings: standings, UrlPre: *url}
+	}{User: to, Standings: standings, UrlPre: *appUrl}
 
 	for _, v := range standings {
 		if v.Vote > 0 {
@@ -1012,7 +1012,7 @@ func SendActivityEmail(to *User, voter *User, votes []*Vote, standings []*Showti
 		Votes     []*Vote
 		Standings []*Showtime
 		UrlPre    string
-	}{User: to, Voter: voter, Votes: votes, Standings: standings, UrlPre: *url}
+	}{User: to, Voter: voter, Votes: votes, Standings: standings, UrlPre: *appUrl}
 
 	emailHeaders := textproto.MIMEHeader{}
 	emailHeaders.Set("MIME-Version", "1.0")
@@ -1037,7 +1037,7 @@ func SendLockEmail(to *User, winner *Showtime, weekOf time.Time) {
 		WeekOf    time.Time
 		Now       time.Time
 		UrlPre    string
-	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(time.Hour * 2), WeekOf: weekOf, Now: time.Now(), UrlPre: *url}
+	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(time.Hour * 2), WeekOf: weekOf, Now: time.Now(), UrlPre: *appUrl}
 
 	var b bytes.Buffer
 
