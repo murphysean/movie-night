@@ -26,19 +26,19 @@
 	</div>
 	<div itemprop="potentialAction" itemscope itemtype="http://schema.org/RsvpAction">
 		<div itemprop="handler" itemscope itemtype="http://schema.org/HttpActionHandler">
-			<link itemprop="url" href="https://www.murphysean.com/movie-night/callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=ACCEPT"/>
+			<link itemprop="url" href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=ACCEPT"/>
 		</div>
 		<link itemprop="attendance" href="http://schema.org/RsvpAttendance/Yes"/>
 	</div>
 	<div itemprop="potentialAction" itemscope itemtype="http://schema.org/RsvpAction">
 		<div itemprop="handler" itemscope itemtype="http://schema.org/HttpActionHandler">
-			<link itemprop="url" href="https://www.murphysean.com/movie-night/callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=DECLINE"/>
+			<link itemprop="url" href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=DECLINE"/>
 		</div>
 		<link itemprop="attendance" href="http://schema.org/RsvpAttendance/No"/>
 	</div>
 	<div itemprop="potentialAction" itemscope itemtype="http://schema.org/RsvpAction">
 		<div itemprop="handler" itemscope itemtype="http://schema.org/HttpActionHandler">
-			<link itemprop="url" href="https://www.murphysean.com/movie-night/callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=TENATIVE"/>
+			<link itemprop="url" href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=TENATIVE"/>
 		</div>
 		<link itemprop="attendance" href="http://schema.org/RsvpAttendance/Maybe"/>
 	</div>
@@ -47,11 +47,11 @@
 <p>The winning movie was {{.Winner.Movie.Title}} at {{.Winner.Showtime.Local.Format "3:04PM"}} in {{.Winner.Screen}} with {{.Winner.Votes}}</p>
 <p>{{.Winner.Movie.Plot}}</p>
 <div>
-	<p>RSVP: <a href="https://www.murphysean.com/movie-night/callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=ACCEPT">Yes</a></p>
-	<p>RSVP: <a href="https://www.murphysean.com/movie-night/callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=DECLINE">No</a></p>
-	<p>RSVP: <a href="https://www.murphysean.com/movie-night/callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=TENATIVE">Maybe</a></p>
+	<p>RSVP: <a href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=ACCEPT">Yes</a></p>
+	<p>RSVP: <a href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=DECLINE">No</a></p>
+	<p>RSVP: <a href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&id={{.WeekOf.Unix}}&value=TENATIVE">Maybe</a></p>
 </div>
-<p>Click <a href="https://www.murphysean.com/movie-night/vote">here</a> to change your notification preferences or unsubscribe</p>
+<p>Click <a href="{{.UrlPre}}vote">here</a> to change your notification preferences or unsubscribe</p>
 <p>Visit <a href="http://www.megaplextheatres.com/D-Theatre_Movietimes/Lehi_Thanksgiving_Point_UT#&&date={{.Winner.Showtime.Local.Format "01-02-2006"}}">megaplex</a> to purchase tickets</p>
 <p>Any complaints about the stylistic simplicity of this email? <a href="http://motherfuckingwebsite.com/">Learn more here</a></p>
 </body>

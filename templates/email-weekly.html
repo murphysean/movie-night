@@ -8,14 +8,14 @@
 <p>Yo {{.User.Name}},</p>
 {{if .Voted}}
 <p>Thank you for voting! You are on the ball, and one of my favorite people eva! If you'd like to change around your votes to ensure 
-you get the best experience possilbe on your night visit <a href="https://www.murphysean.com/movie-night/vote">movie-night</a> 
+you get the best experience possilbe on your night visit <a href="{{.UrlPre}}vote">movie-night</a> 
 and vote to your hearts content. I'm actually thinking that early voters should get a little extra motivation, perhaps a few extra
 votes to cast. Stay tuned...</p>
 {{else}}
 <p>Movie night is once again creeping upon you. Since you've been slacking in your democratic responsibilites, this friendly, and also 
 non-spammy email is your weekly reminder that Tuesday night will soon arrive. The sooner you vote the sooner we can lock in the 
 showtime and get tickets. In order to keep the gears grinding, visit 
-<a href="https://www.murphysean.com/movie-night/vote">movie-night</a> and vote for your prefered showtime.</p>
+<a href="{{.UrlPre}}vote">movie-night</a> and vote for your prefered showtime.</p>
 {{end}}
 <p>New!: Introduced this week you can actually downvote (Vote -1) a showtime that you would like to see removed from the vote. Once 
 it reaches a score of -3 it will no longer show up for others to vote on it. This will incentivise early voting, to keep showtimes 
@@ -26,7 +26,7 @@ that you prefer in the running, and also to quickly remove those that you despis
 	<li>{{.Movie.Title}} @ {{.Showtime.Local.Format "3:04PM"}} in {{.Screen}} with {{.Votes}} votes</li>
 {{end}}
 </ol>
-<p>Click <a href="https://www.murphysean.com/movie-night/vote">here</a> to change your notification preferences or unsubscribe</p>
+<p>Click <a href="{{.UrlPre}}vote">here</a> to change your notification preferences or unsubscribe</p>
 <p>Any complaints about the stylistic simplicity of this email? <a href="http://motherfuckingwebsite.com/">Learn more here</a></p>
 </body>
 </html>

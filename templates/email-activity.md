@@ -9,4 +9,4 @@ The current standings:
  {{.Movie.Title}} @ {{.Showtime.Local.Format "3:04PM"}} in {{.Screen}} with {{.Votes}} votes
 {{end}}
 
-Make sure you get your votes in. Visit https://www.murphysean.com/movie-night/vote" to get your votes in.
+Make sure you get your votes in. Visit {{.UrlPre}}vote" to get your votes in.

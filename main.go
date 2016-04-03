@@ -107,7 +107,8 @@ var lockDay = flag.Int("lockDay", 2, "The day Sun=0 the lock email goes out")
 var lockHour = flag.Int("lockHour", 16, "The hour of the day the lock email goes out")
 var lockMinute = flag.Int("lockMinute", 30, "The minutes within the hour the lock email goes out")
 
-const salt = "$murphyseanmovienight$:"
+var salt = flag.String("salt", "$murphyseanmovienight$:", "The salt to use to hash user passwords")
+var appUrl = flag.String("url", "http://localhost:9000/", "The url prefix to use for callback urls")
 
 // Serve the templated home file, or serve the www directory
 var serveWWW = flag.Bool("www", true, "This toggles serving the templated home.html file on / vs serving the www directory")
@@ -942,18 +943,19 @@ func SendBuzzMessage(title, message string) error {
 
 func SendRegistrationEmail(u *User, ott string) {
 	params := struct {
-		User *User
-		Ott  string
-	}{User: u}
+		User   *User
+		Ott    string
+		UrlPre string
+	}{User: u, UrlPre: *url}
 
 	emailHeaders := textproto.MIMEHeader{}
 	emailHeaders.Set("MIME-Version", "1.0")
-	emailHeaders.Set("From", "Movie Night <movienight@murphysean.com>")
+	emailHeaders.Set("From", "Movie Night <"+*emailFrom+">")
 	emailHeaders.Set("Date", time.Now().Format("Mon, 02 Jan 2006 15:04:05 -0700"))
 	emailHeaders.Set("Subject", "Movie Night Registration")
 	emailHeaders.Set("To", u.Name+" <"+u.Email+">")
 
-	err := SendSimpleEmail(u.Email, "movienight@murphysean.com", "email-registration.md", "email-registration.html", params, emailHeaders)
+	err := SendSimpleEmail(u.Email, *emailFrom, "email-registration.md", "email-registration.html", params, emailHeaders)
 	if err != nil {
 		log.Println("SendRegistrationEmail:5:", err)
 	}
@@ -964,7 +966,8 @@ func SendWeeklyEmail(to *User, standings []*Showtime, bow, eow time.Time) {
 		User      *User
 		Standings []*Showtime
 		Voted     bool
-	}{User: to, Standings: standings}
+		UrlPre    string
+	}{User: to, Standings: standings, UrlPre: *url}
 
 	for _, v := range standings {
 		if v.Vote > 0 {
@@ -975,14 +978,14 @@ func SendWeeklyEmail(to *User, standings []*Showtime, bow, eow time.Time) {
 
 	emailHeaders := textproto.MIMEHeader{}
 	emailHeaders.Set("MIME-Version", "1.0")
-	emailHeaders.Set("From", "Movie Night <movienight@murphysean.com>")
+	emailHeaders.Set("From", "Movie Night <"+*emailFrom+">")
 	emailHeaders.Set("Date", time.Now().Format("Mon, 02 Jan 2006 15:04:05 -0700"))
 	emailHeaders.Set("Subject", "Movie Night Weekly Notification")
 	emailHeaders.Set("To", to.Name+" <"+to.Email+">")
 	emailHeaders.Set("References", "<movie-night."+bow.Format(time.RFC3339)+"@murphysean.com>")
 	emailHeaders.Set("In-Reply-To", "<movie-night."+bow.Format(time.RFC3339)+"@murphysean.com>")
 
-	err := SendSimpleEmail(to.Email, "movienight@murphysean.com", "email-weekly.md", "email-weekly.html", params, emailHeaders)
+	err := SendSimpleEmail(to.Email, *emailFrom, "email-weekly.md", "email-weekly.html", params, emailHeaders)
 	if err != nil {
 		log.Println("SendWeeklyEmail", err)
 	}
@@ -1008,18 +1011,19 @@ func SendActivityEmail(to *User, voter *User, votes []*Vote, standings []*Showti
 		Voter     *User
 		Votes     []*Vote
 		Standings []*Showtime
-	}{User: to, Voter: voter, Votes: votes, Standings: standings}
+		UrlPre    string
+	}{User: to, Voter: voter, Votes: votes, Standings: standings, UrlPre: *url}
 
 	emailHeaders := textproto.MIMEHeader{}
 	emailHeaders.Set("MIME-Version", "1.0")
-	emailHeaders.Set("From", "Movie Night <movienight@murphysean.com>")
+	emailHeaders.Set("From", "Movie Night <"+*emailFrom+">")
 	emailHeaders.Set("Date", time.Now().Format("Mon, 02 Jan 2006 15:04:05 -0700"))
 	emailHeaders.Set("Subject", "Movie Night Activity")
 	emailHeaders.Set("To", to.Name+" <"+to.Email+">")
 	emailHeaders.Set("References", "<movie-night."+bow.Format(time.RFC3339)+"@murphysean.com>")
 	emailHeaders.Set("In-Reply-To", "<movie-night."+bow.Format(time.RFC3339)+"@murphysean.com>")
 
-	err := SendSimpleEmail(to.Email, "movienight@murphysean.com", "email-activity.md", "email-activity.html", params, emailHeaders)
+	err := SendSimpleEmail(to.Email, *emailFrom, "email-activity.md", "email-activity.html", params, emailHeaders)
 	if err != nil {
 		fmt.Println("SendActivityEmail", err)
 	}
@@ -1032,13 +1036,14 @@ func SendLockEmail(to *User, winner *Showtime, weekOf time.Time) {
 		WinnerEnd time.Time
 		WeekOf    time.Time
 		Now       time.Time
-	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(time.Hour * 2), WeekOf: weekOf, Now: time.Now()}
+		UrlPre    string
+	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(time.Hour * 2), WeekOf: weekOf, Now: time.Now(), UrlPre: *url}
 
 	var b bytes.Buffer
 
 	emailHeaders := textproto.MIMEHeader{}
 	emailHeaders.Set("MIME-Version", "1.0")
-	emailHeaders.Set("From", "Movie Night <movienight@murphysean.com>")
+	emailHeaders.Set("From", "Movie Night <"+*emailFrom+">")
 	emailHeaders.Set("Date", time.Now().Format("Mon, 02 Jan 2006 15:04:05 -0700"))
 	emailHeaders.Set("Subject", "Movie Night Confirmation")
 	emailHeaders.Set("To", to.Name+" <"+to.Email+">")
@@ -1122,7 +1127,7 @@ func SendLockEmail(to *User, winner *Showtime, weekOf time.Time) {
 
 	mmpw.Close()
 
-	err = SendEmail(to.Email, "movienight@murphysean.com", b.Bytes())
+	err = SendEmail(to.Email, *emailFrom, b.Bytes())
 	if err != nil {
 		log.Println("SendLockEmail:7:", err)
 		return
@@ -1237,7 +1242,7 @@ func initDB(db *sql.DB) {
 }
 
 func validateUser(email, password string) (*User, error) {
-	sum := sha512.Sum512_256([]byte(salt + password))
+	sum := sha512.Sum512_256([]byte(*salt + password))
 	sep := base64.URLEncoding.EncodeToString(sum[:])
 	rows, err := db.Query("SELECT id, name, email FROM users WHERE email = ? AND password = ? LIMIT 1", email, sep)
 	if err != nil {
@@ -1272,7 +1277,7 @@ func registerUser(name, email, ott string) (*User, error) {
 }
 
 func finishRegistration(ott, password string) (*User, error) {
-	sum := sha512.Sum512_256([]byte(salt + password))
+	sum := sha512.Sum512_256([]byte(*salt + password))
 	sep := base64.URLEncoding.EncodeToString(sum[:])
 	u, err := getUserForOTT(ott)
 	if err != nil {

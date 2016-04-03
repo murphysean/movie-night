@@ -34,6 +34,8 @@ get a man page describing the flags and their usage.
 * -www=true When true the application will serve web content from the www 
     directory instead of rendering the home html template. This is for
     developing a custom web application for movie night.
+* -salt The salt string to use to salt user passwords before hashing
+* -url The url prefix to use for all callback urls in emails and links
 
 ### Registration
 
