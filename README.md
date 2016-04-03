@@ -197,8 +197,28 @@ necissary flags and then use that to wrap your application. Here is an example:
 
 	#!/bin/sh
 
-	./movie-night -port=8080 -debug=false -buzz='https://domo.demo.domo.com/api/buzz/v1/integrations/push/abcde/f12345' -emailFrom='movienight@murphysean.com' -emailHost='gmail.com' -emailUser='example@gmail.com' -emailPass=supercool -weeklyDay=6 -weeklyHour=9 -weeklyMinute=0 -lockDay=2 -lockHour=16 -lockMinute=30 -salt='saltylakeut' -url='https://www.example.com/movie-night/'
+	./movie-night \
+	 -port=8080 \
+	 -debug=false \
+	 -buzz='https://domo.demo.domo.com/api/buzz/v1/integrations/push/abcde/f12345' \
+	 -emailFrom='movienight@murphysean.com' \
+	 -emailHost='gmail.com' \
+	 -emailUser='example@gmail.com' \
+	 -emailPass=supercool \
+	 -weeklyDay=6 -weeklyHour=9 -weeklyMinute=0 \
+	 -lockDay=2 -lockHour=16 -lockMinute=30 \
+	 -salt='saltylakeut' \
+	 -url='https://www.example.com/movie-night/' \
+	 -www=false
 
 Say this script was called run.sh. Now you can run your application via:
 
 	./run.sh
+
+### Scripts
+
+There are some utility scripts to help out with development in the scripts
+folder. Sometimes it's helpful to populate the database with some users, 
+movies and showtimes to test out the operations. The scripts folder can help
+with this. The scripts all assume movie night is running locally on port 9000
+unless otherwise stated.

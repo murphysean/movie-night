@@ -1243,7 +1243,7 @@ func initDB(db *sql.DB) {
 
 func validateUser(email, password string) (*User, error) {
 	sum := sha512.Sum512_256([]byte(*salt + password))
-	sep := base64.URLEncoding.EncodeToString(sum[:])
+	sep := base64.StdEncoding.EncodeToString(sum[:])
 	rows, err := db.Query("SELECT id, name, email FROM users WHERE email = ? AND password = ? LIMIT 1", email, sep)
 	if err != nil {
 		log.Println("ValidateUser:", err)
@@ -1278,7 +1278,7 @@ func registerUser(name, email, ott string) (*User, error) {
 
 func finishRegistration(ott, password string) (*User, error) {
 	sum := sha512.Sum512_256([]byte(*salt + password))
-	sep := base64.URLEncoding.EncodeToString(sum[:])
+	sep := base64.StdEncoding.EncodeToString(sum[:])
 	u, err := getUserForOTT(ott)
 	if err != nil {
 		return nil, err
