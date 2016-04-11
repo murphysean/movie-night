@@ -1,7 +1,7 @@
 New Activity! {{.Voter.Name}} has voted.
 They voted for:
 {{range .Votes}}
- {{.Vote}} for {{.Showtime.Local.Format "3:04PM"}}
+ {{.Vote}} for {{.Movie.Title}} at {{.Showtime.Local.Format "3:04PM"}} in {{.Screen}}
 {{end}}
 
 The current standings:

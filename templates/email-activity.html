@@ -9,7 +9,7 @@
 <p>They voted for:</p>
 <ul>
 {{range .Votes}}
-	<li>{{.Vote}} for {{.Showtime.Local.Format "3:04PM"}}</li>
+	<li>{{.Vote}} for {{.Movie.Title}} @ {{.Showtime.Local.Format "3:04PM"}} in {{.Screen}}</li>
 {{end}}
 </ul>
 <p>The current standings:</p>

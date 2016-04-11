@@ -10,6 +10,24 @@
 <span>Password: </span><input type="password" name="password"/><br/>
 <input type="submit" value="Submit"/>
 <p>Click <a href="./register">here</a> to register</p>
+<p>Current Top 10 Showtimes:</p>
+{{range .Showtimes}}
+<article>
+	<p><a href="http://www.imdb.com/title/{{.Movie.Imdb}}"><img src="{{.Movie.Poster}}" alt="{{.Movie.Title}}" height="75" width="35"/></a>
+	<span>{{.Showtime.Local.Format "3:04PM" }}: </span>
+	<span> {{.Movie.Title}}</span>
+	<span> in {{.Screen}}</span>
+	<span> currently has {{.Votes}} votes.</span>
+	<a href="http://www.megaplextheatres.com{{.PreviewSeatsLink}}">
+		<img src="./api/preview?showtimeid={{.Id}}" alt="preview image"/>
+		Preview Seats
+	</a>
+	<a href="http://www.megaplextheatres.com{{.BuyTicketsLink}}">Buy Tickets</a>
+	</p>
+</article>
+{{else}}
+<p>No Showtimes!</p>
+{{end}}
 <p>Any complaints about the stylistic simplicity of this site? <a href="http://motherfuckingwebsite.com/">Learn more here</a></p>
 </form>
 </body>

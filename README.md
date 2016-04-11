@@ -186,7 +186,12 @@ https://github.com/mattn/go-sqlite3 to bind to the c apis. At the time we are
 planning to use the json1 extensions, in order to compile sqlite with this 
 extension use:
 
-	go build --tags "json1" -o movie-night main.go
+	go build --tags "json1 fts5" -o movie-night main.go
+
+Some other nice functions and support are in the icu and soundex extensions.
+You can build those like so:
+
+	go build --tags "json1 soundex icu fts5" -o movie-night main.go
 
 ### Running
 

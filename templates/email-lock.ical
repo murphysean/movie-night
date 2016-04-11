@@ -9,7 +9,7 @@ DTEND:{{.WinnerEnd.UTC.Format "20060102T150405Z"}}
 DTSTAMP:{{.Now.UTC.Format "20060102T150405Z"}}
 ORGANIZER;CN=Movie Night:MAILTO:movienight@murphysean.com
 UID:{{.WeekOf.Unix}}-movienight@murphysean.com
-ATTENDEE;CN={{.User.Name}}:MAILTO:{{.User.Email}}
+ATTENDEE;CN={{.User.Name}};ID={{.User.Id}};HMAC={{.Hmac}}:MAILTO:{{.User.Email}}
 CREATED:{{.Now.Format "20060102T150405Z"}}
 DESCRIPTION:{{.Winner.Movie.Plot}}
 LAST-MODIFIED:{{.Now.UTC.Format "20060102T150405Z"}}
