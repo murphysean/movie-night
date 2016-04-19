@@ -66,6 +66,7 @@ func InitDB(db *sql.DB) {
 	getMovieStmt = mustPrepare(getMovieSql)
 	insertMovieStmt = mustPrepare(insertMovieSql)
 	insertShowtimeStmt = mustPrepare(insertShowtimeSql)
+	insertRsvpStmt = mustPrepare(insertRsvpSql)
 }
 
 func mustPrepare(sql string) *sql.Stmt {

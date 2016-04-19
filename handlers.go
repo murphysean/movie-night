@@ -659,9 +659,15 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Post("http://www.megaplextheatres.com/webservices/Ticketing.svc/GetSeatStatus", "application/json; charset=UTF-8", &out)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		http.Error(w, fmt.Sprint("Invalid Status from megaplextheatres", resp.StatusCode), http.StatusServiceUnavailable)
+		return
+	}
 
 	j := struct {
 		D string `json:"d"`
@@ -670,6 +676,7 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	err = d.Decode(&j)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -690,6 +697,11 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, t := range tokens {
+		if len(t) == 0 {
+			log.Println("Recieved empty token")
+			http.Error(w, "Empty Token", http.StatusServiceUnavailable)
+			return
+		}
 		switch t[0:1] {
 		case "T":
 			//fmt.Println("Starting Theatre")
