@@ -19,7 +19,7 @@ func GetShowtimesRoutine(day, hour, minute int) {
 		}
 		fmt.Println("Will update showtimes in", runAt.Sub(time.Now()))
 		time.Sleep(runAt.Sub(time.Now()))
-		tue := now.EndOfWeek().AddDate(0, 0, 2).Local()
+		tue := now.EndOfWeek().Add(time.Hour).AddDate(0, 0, 2).Local()
 		fetchShowtimes("Lehi_Thanksgiving_Point_UT", tue)
 		time.Sleep(time.Hour)
 	}

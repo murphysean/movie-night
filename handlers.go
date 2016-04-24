@@ -39,9 +39,38 @@ func AdminMovieHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AdminShowtimeHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO Kick off the showtime fetcher with the params location and day
-	t, _ := time.ParseInLocation("01/02/2006", "04/12/2016", time.Local)
-	fetchShowtimes("Lehi_Thanksgiving_Point_UT", t)
+	var locations = []string{
+		"Lehi_Thanksgiving_Point_UT",
+		"Vineyard_Geneva_UT",
+		"Sandy_Jordan_Commons_UT",
+		"South_Jordan_The_District_UT"}
+	l := r.URL.Query().Get("location")
+	date := r.URL.Query().Get("date")
+	if l == "" {
+		l = locations[0]
+	}
+	if l == "" || date == "" {
+		http.Error(w, "Need 'location' and 'date' query params", http.StatusBadRequest)
+		return
+	}
+	li := -1
+	for i, v := range locations {
+		if v == l {
+			li = i
+			break
+		}
+	}
+	if li < 0 {
+		http.Error(w, "'location' query param must be one of:\n"+strings.Join(locations, ","), http.StatusBadRequest)
+		return
+	}
+
+	t, err := time.ParseInLocation("01-02-2006", date, time.Local)
+	if err != nil {
+		http.Error(w, "Couldn't parse date, must be in MM-DD-YYYY format\n"+err.Error(), http.StatusBadRequest)
+		return
+	}
+	fetchShowtimes(l, t)
 }
 
 func AdminLockHandler(w http.ResponseWriter, r *http.Request) {
