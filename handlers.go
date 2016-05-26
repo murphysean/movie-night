@@ -517,6 +517,9 @@ func PrefsHandler(w http.ResponseWriter, r *http.Request) {
 			if v := r.PostFormValue("giftcard"); v != "" {
 				u.GiftCard = v
 			}
+			if v := r.PostFormValue("giftcardpin"); v != "" {
+				u.GiftCardPin = v
+			}
 			if v := r.PostFormValue("rewardcard"); v != "" {
 				u.RewardCard = v
 			}

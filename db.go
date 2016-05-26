@@ -24,7 +24,7 @@ var dbInits = []string{
 var dbCreates = []string{
 	"CREATE TABLE IF NOT EXISTS version (id INTEGER PRIMARY KEY, version TEXT)",
 	"INSERT INTO version (version) VALUES ('" + version + "')",
-	"CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT, ott TEXT, weekly_not INTEGER DEFAULT 1, lock_not INTEGER DEFAULT 1, act_not INTEGER DEFAULT 0, giftcard TEXT NOT NULL DEFAULT '', rewardcard TEXT NOT NULL DEFAULT '', zip TEXT NOT NULL DEFAULT '84043')",
+	"CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT, ott TEXT, weekly_not INTEGER DEFAULT 1, lock_not INTEGER DEFAULT 1, act_not INTEGER DEFAULT 0, giftcard TEXT NOT NULL DEFAULT '', giftcardpin TEXT NOT NULL DEFAULT '', rewardcard TEXT NOT NULL DEFAULT '', zip TEXT NOT NULL DEFAULT '84043')",
 	"CREATE TABLE IF NOT EXISTS movies (id INTEGER NOT NULL PRIMARY KEY, imdb TEXT NOT NULL DEFAULT 'unknown', title TEXT NOT NULL DEFAULT 'UNKNOWN', json TEXT NOT NULL DEFAULT '{}')",
 	"CREATE TABLE IF NOT EXISTS showtimes (id INTEGER NOT NULL PRIMARY KEY, movieid INTEGER NOT NULL, showtime TIMESTAMP NOT NULL, screen TEXT NOT NULL, location TEXT NOT NULL, address TEXT NOT NULL, preview TEXT NOT NULL, buy TEXT NOT NULL, FOREIGN KEY(movieid) REFERENCES movies(id))",
 	"CREATE TABLE IF NOT EXISTS votes (userid INTEGER NOT NULL, showtimeid INTEGER NOT NULL, votes INTEGER NOT NULL, PRIMARY KEY(userid, showtimeid), FOREIGN KEY(userid) REFERENCES users(id), FOREIGN KEY(showtimeid) REFERENCES showtimes(id))",
@@ -133,11 +133,11 @@ func FinishRegistration(ott, password string) (*User, error) {
 
 var getUserStmt *sql.Stmt
 
-const getUserSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, rewardcard, zip FROM users WHERE id = ? LIMIT 1`
+const getUserSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, giftcardpin, rewardcard, zip FROM users WHERE id = ? LIMIT 1`
 
 func GetUser(id int) (*User, error) {
 	u := new(User)
-	err := getUserStmt.QueryRow(id).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.RewardCard, &u.Zip)
+	err := getUserStmt.QueryRow(id).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip)
 	if err != nil {
 		return nil, err
 	}
@@ -146,11 +146,11 @@ func GetUser(id int) (*User, error) {
 
 var getUserForEmailStmt *sql.Stmt
 
-const getUserForEmailSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, rewardcard, zip FROM users WHERE email LIKE ? LIMIT 1`
+const getUserForEmailSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, giftcardpin, rewardcard, zip FROM users WHERE email LIKE ? LIMIT 1`
 
 func GetUserForEmail(email string) (*User, error) {
 	u := new(User)
-	err := getUserForEmailStmt.QueryRow(email).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.RewardCard, &u.Zip)
+	err := getUserForEmailStmt.QueryRow(email).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip)
 	if err != nil {
 		return nil, err
 	}
@@ -187,10 +187,10 @@ func GetUsersForPreference(n PreferenceType) ([]*User, error) {
 
 var updateUserPrefsStmt *sql.Stmt
 
-const updateUserPrefsSql = `UPDATE users SET weekly_not = ?, lock_not = ?, act_not = ?, giftcard = ?, rewardcard = ?, zip = ? WHERE id = ?`
+const updateUserPrefsSql = `UPDATE users SET weekly_not = ?, lock_not = ?, act_not = ?, giftcard = ?, giftcardpin = ?, rewardcard = ?, zip = ? WHERE id = ?`
 
 func UpdateUserPrefs(user *User) error {
-	_, err := updateUserPrefsStmt.Exec(user.WeeklyNotification, user.LockNotification, user.ActivityNotification, user.GiftCard, user.RewardCard, user.Zip, user.Id)
+	_, err := updateUserPrefsStmt.Exec(user.WeeklyNotification, user.LockNotification, user.ActivityNotification, user.GiftCard, user.GiftCardPin, user.RewardCard, user.Zip, user.Id)
 	if err != nil {
 		return err
 	}

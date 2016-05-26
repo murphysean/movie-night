@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Login</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
 <form action="" method="post">
@@ -14,13 +15,23 @@
 {{range .Showtimes}}
 <article>
 	<p><a href="http://www.imdb.com/title/{{.Movie.Imdb}}"><img src="{{.Movie.Poster}}" alt="{{.Movie.Title}}" height="75" width="35"/></a>
+	{{if eq .Movie.ImdbRating "N/A"}}
+	<span>?</span>
+	{{if gt .Movie.ImdbRating "8."}}
+	<span><i class="material-icons">trending_up</i></span>
+	{{if gt .Movie.ImdbRating "5."}}
+	<span><i class="material-icons">trending_flat</i></span>
+	{{else}}
+	<span><i class="material-icons">trending_down</i></span>
+	{{end}}
+	<span>{{.Location}} @ </span>
 	<span>{{.Showtime.Local.Format "3:04PM" }}: </span>
 	<span> {{.Movie.Title}}</span>
 	<span> in {{.Screen}}</span>
 	<span> currently has {{.Votes}} votes.</span>
 	<a href="http://www.megaplextheatres.com{{.PreviewSeatsLink}}">
-		<img src="./api/preview?showtimeid={{.Id}}" alt="preview image"/>
-		Preview Seats
+		<img src="./api/preview?showtimeid={{.Id}}" alt="preview image" onerror="this.style.display='none';"/>
+		<i class="material-icons">event_seat</i>Preview Seats
 	</a>
 	<a href="http://www.megaplextheatres.com{{.BuyTicketsLink}}">Buy Tickets</a>
 	</p>

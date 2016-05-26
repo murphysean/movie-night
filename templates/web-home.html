@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>$5 Movie Night</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
 <p>Hello, {{.User.Name}}</p>
@@ -16,14 +17,24 @@
 {{range .Showtimes}}
 <article>
 	<p><a href="http://www.imdb.com/title/{{.Movie.Imdb}}"><img src="{{.Movie.Poster}}" alt="{{.Movie.Title}}" height="75" width="35"/></a>
+	{{if eq .Movie.ImdbRating "N/A"}}
+	<span>?</span>
+	{{if gt .Movie.ImdbRating "8."}}
+	<span><i class="material-icons">trending_up</i></span>
+	{{if gt .Movie.ImdbRating "5."}}
+	<span><i class="material-icons">trending_flat</i></span>
+	{{else}}
+	<span><i class="material-icons">trending_down</i></span>
+	{{end}}
+	<span>{{.Location}} @ </span>
 	<span>{{.Showtime.Local.Format "3:04PM" }}: </span>
 	<span> {{.Movie.Title}}</span>
 	<span> in {{.Screen}}</span>
 	<span> currently has {{.Votes}} votes.</span>
 	<input type="number" name="{{.Id}}" value="{{.Vote}}" min="-1" max="3" step="1"/>
 	<a href="http://www.megaplextheatres.com{{.PreviewSeatsLink}}">
-		<img src="./api/preview?showtimeid={{.Id}}" alt="preview image"/>
-		Preview Seats
+		<img src="./api/preview?showtimeid={{.Id}}" alt="preview image" onerror="this.style.display='none';"/>
+		<i class="material-icons">event_seat</i>Preview Seats
 	</a>
 	<a href="http://www.megaplextheatres.com{{.BuyTicketsLink}}">Buy Tickets</a>
 	</p>
@@ -37,8 +48,9 @@
 	<p><input type="checkbox" name="weekly" value="true"{{if .User.WeeklyNotification}} checked{{end}}/> Weekly Notification</p>
 	<p><input type="checkbox" name="lock" value="true"{{if .User.LockNotification}} checked{{end}}/> Calendar Notification</p>
 	<p><input type="checkbox" name="activity" value="true"{{if .User.ActivityNotification}} checked{{end}}/> Activity Notification</p>
-	<p>GiftCard:<input type="text" name="giftcard" value="{{.User.GiftCard}}"/></p>
-	<p>RewardCard:<input type="text" name="rewardcard" value="{{.User.RewardCard}}"/></p>
+	<p>GiftCard<i class="material-icons">card_giftcard</i>:<input type="text" name="giftcard" value="{{.User.GiftCard}}"/></p>
+	<p>GiftCard<i class="material-icons">card_giftcard</i> Pin:<input type="text" name="giftcardpin" value="{{.User.GiftCardPin}}"/></p>
+	<p>RewardCard<i class="material-icons">card_membership</i>:<input type="text" name="rewardcard" value="{{.User.RewardCard}}"/></p>
 	<p>Zip:<input type="text" name="zip" value="{{.User.Zip}}"/></p>
 <input type="submit" value="Update Settings"/>
 </form>

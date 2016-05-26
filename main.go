@@ -20,9 +20,10 @@ type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	GiftCard   string `json:"giftCard"`
-	RewardCard string `json:"rewardCard"`
-	Zip        string `json:"zip"`
+	GiftCard    string `json:"giftCard"`
+	GiftCardPin string `json:"giftCardPin"`
+	RewardCard  string `json:"rewardCard"`
+	Zip         string `json:"zip"`
 
 	WeeklyNotification   bool `json:"weeklyNotification"`
 	LockNotification     bool `json:"lockNotification"`
@@ -91,7 +92,7 @@ func (n PreferenceType) String() string {
 	return "undefined"
 }
 
-const version = `02.01.00`
+const version = `02.02.00`
 
 // The mnt variable is the global template variable
 var mnt *template.Template
