@@ -19,9 +19,9 @@
 	<p><a href="http://www.imdb.com/title/{{.Movie.Imdb}}"><img src="{{.Movie.Poster}}" alt="{{.Movie.Title}}" height="75" width="35"/></a>
 	{{if eq .Movie.ImdbRating "N/A"}}
 	<span>?</span>
-	{{if gt .Movie.ImdbRating "8."}}
+	{{else if gt .Movie.ImdbRating "8."}}
 	<span><i class="material-icons">trending_up</i></span>
-	{{if gt .Movie.ImdbRating "5."}}
+	{{else if gt .Movie.ImdbRating "5."}}
 	<span><i class="material-icons">trending_flat</i></span>
 	{{else}}
 	<span><i class="material-icons">trending_down</i></span>
