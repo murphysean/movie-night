@@ -92,7 +92,7 @@ func (n PreferenceType) String() string {
 	return "undefined"
 }
 
-const version = `02.02.01`
+const version = `02.03.00`
 
 // The mnt variable is the global template variable
 var mnt *template.Template
@@ -180,7 +180,8 @@ func main() {
 	http.HandleFunc("/prefs", PrefsHandler)
 
 	http.HandleFunc("/api/showtimes", APIShowtimesHandler)
-	http.HandleFunc("/api/user", APIUserHandler)
+	http.HandleFunc("/api/users/", APIUsersHandler)
+	http.HandleFunc("/api/login", APILoginHandler)
 	http.HandleFunc("/api/preview", APIPreviewHandler)
 
 	http.HandleFunc("/admin/movie", AdminMovieHandler)

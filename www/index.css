@@ -1,0 +1,37 @@
+html, body {
+  font-family: 'Roboto', 'Helvetica', sans-serif;
+}
+
+.mn-card-square.mdl-card {
+  width: 320px;
+  height: 320px;
+}
+.mn-card-square > .mdl-card__title {
+  color: #fff;
+  background-position-y: center;
+  background-color: #46B6AC;
+}
+
+.mn-card-square > .mdl-card__title > .mdl-card__title-text {
+  background-color: rgba(0,0,0,0.4);
+}
+
+dialog::backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.material-icons.md-18 { font-size: 18px; width: 18px; }
+.material-icons.md-24 { font-size: 24px; width: 24px; }
+.material-icons.md-36 { font-size: 36px; width: 36px; }
+.material-icons.md-48 { font-size: 48px; width: 48px; }
+.material-icons.md-gold { color: rgb(255,215,0); }
+.material-icons.md-red { color: rgb(255,0,0); }
+.material-icons.md-dark { color: rgba(0, 0, 0, 0.54); }
+.material-icons.md-dark.md-inactive { color: rgba(0, 0, 0, 0.26); }
+.material-icons.md-light { color: rgba(255, 255, 255, 1); }
+.material-icons.md-light.md-inactive { color: rgba(255, 255, 255, 0.3); }

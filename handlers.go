@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -540,6 +542,13 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("movienightsid")
 	if err == nil && sessions[c.Value] > 0 {
 		u, _ = GetUser(sessions[c.Value])
+	} else {
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			if sessions[authHeader[7:]] > 0 {
+				u, _ = GetUser(sessions[authHeader[7:]])
+			}
+		}
 	}
 	n := time.Now()
 	bow, eow := GetBeginningAndEndOfWeekForTime(n)
@@ -582,7 +591,12 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case http.MethodGet:
-		sts, err := GetShowtimesForWeekOf(bow, eow, u.Id)
+		var sts []*Showtime
+		if u == nil {
+			sts, err = GetTopShowtimesForWeekOf(bow, eow, 10)
+		} else {
+			sts, err = GetShowtimesForWeekOf(bow, eow, u.Id)
+		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -598,17 +612,68 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func APILoginHandler(w http.ResponseWriter, r *http.Request) {
+	var loginObj = struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{}
+	d := json.NewDecoder(r.Body)
+	err := d.Decode(&loginObj)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if u, err := ValidateUser(loginObj.Email, loginObj.Password); err == nil {
+		nc := new(http.Cookie)
+		nc.Name = "movienightsid"
+		nc.Value = GenUUIDv4()
+		nc.Expires = time.Now().Add(time.Hour * 24 * 365)
+		sessions[nc.Value] = u.Id
+		http.SetCookie(w, nc)
+
+		e := json.NewEncoder(w)
+		err = e.Encode(&u)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+}
+
 // This api handler will respond with the current user object (including preferences) on a
 // GET request. On a POST or PUT request it will update the current user object.
-func APIUserHandler(w http.ResponseWriter, r *http.Request) {
+func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
+	var userId int = -1
+	re := regexp.MustCompile(`/api/users/([^/]*)`)
+	puidm := re.FindStringSubmatch(r.URL.Path)
 	var u *User
 	c, err := r.Cookie("movienightsid")
 	if err == nil && sessions[c.Value] > 0 {
 		u, _ = GetUser(sessions[c.Value])
+	} else {
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			if sessions[authHeader[7:]] > 0 {
+				u, _ = GetUser(sessions[authHeader[7:]])
+			}
+		}
 	}
 	if u == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
+	}
+	if len(puidm) > 1 {
+		if puidm[1] == "me" {
+			userId = u.Id
+		} else {
+			userId, err = strconv.Atoi(puidm[1])
+			if err != nil {
+				userId = -1
+			}
+		}
 	}
 	switch r.Method {
 	case http.MethodPost:
@@ -620,10 +685,27 @@ func APIUserHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		u.Id = userId
 		UpdateUserPrefs(u)
 	case http.MethodGet:
+		if userId <= 0 {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		//TODO If userId == -1 then get a list of users
+		ret, err := GetUser(userId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if userId != u.Id {
+			ret.Email = ""
+			ret.GiftCard = ""
+			ret.GiftCardPin = ""
+			ret.RewardCard = ""
+		}
 		e := json.NewEncoder(w)
-		err := e.Encode(&u)
+		err = e.Encode(&ret)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
