@@ -170,6 +170,25 @@ func SendLockEmail(to *User, winner *Showtime, weekOf time.Time) {
 		Hmac      string
 	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(time.Hour * 2), WeekOf: weekOf, Now: time.Now(), UrlPre: *appUrl, Hmac: hmac}
 
+	//Abort sending if the user hasn't voted this period
+	bow, eow := GetBeginningAndEndOfWeekForTime(time.Now())
+	standings, err := GetShowtimesForWeekOf(bow, eow, to.Id)
+	if err != nil {
+		return
+	}
+
+	voted := false
+	for _, v := range standings {
+		if v.Vote > 0 {
+			voted = true
+			break
+		}
+	}
+
+	if !voted {
+		return
+	}
+
 	var b bytes.Buffer
 
 	emailHeaders := textproto.MIMEHeader{}

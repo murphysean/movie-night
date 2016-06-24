@@ -332,7 +332,7 @@ func DelayedActivityNotificationRoutine() {
 		var t time.Time
 		for a, t = userActivityMap.GetNextAvailableActivity(); a != nil; a, t = userActivityMap.GetNextAvailableActivity() {
 			//Send a buzz message to the channel
-			buzz := fmt.Sprintf("%s voted for movie night. %s@%s leads with %d votes.",
+			buzz := fmt.Sprintf("%s voted for [movie night](https://www.murphysean.com/movie-night). %s@%s leads with %d votes.",
 				a.User.Name, showtimes[0].Movie.Title,
 				showtimes[0].Showtime.Local().Format(time.Kitchen), showtimes[0].Votes)
 			go SendBuzzMessage("Movie-Night: New Votes!", buzz)
