@@ -585,6 +585,19 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Sum of all votes can't exceed 6", http.StatusBadRequest)
 			return
 		}
+		sts := make([]*Showtime, 0)
+		for _, s := range votes {
+			v, err := GetShowtime(s.Id)
+			if err != nil {
+				http.Error(w, fmt.Sprint("Invalid showtime id:", s.Id), http.StatusBadRequest)
+				return
+			}
+			v.Vote = s.Vote
+			if v.Vote > 0 || v.Vote == -1 {
+				sts = append(sts, v)
+			}
+		}
+		votes = sts
 		err = InsertVotesForUser(bow, eow, sessions[c.Value], votes)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

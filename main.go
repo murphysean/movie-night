@@ -195,6 +195,9 @@ func main() {
 	go LockEmailRoutine(*lockDay, *lockHour, *lockMinute)
 	go GetShowtimesRoutine(3, 1, 0)
 
+	go ActivityProcessingRoutine()
+	go DelayedActivityNotificationRoutine()
+
 	fmt.Println("Serving on :", *port)
 	log.Fatal(http.ListenAndServe(":"+fmt.Sprint(*port), nil))
 }
