@@ -55,7 +55,8 @@ function initShowtimes(){
                 article.className = 'mdl-cell mdl-cell--4-col mn-card-square mdl-card mdl-shadow--2dp';
                 var header = document.createElement('header');
                 header.className = 'mdl-card__title mdl-card--expand';
-                header.style.backgroundImage = "url('"+ this.response[i].movie.Poster + "')";
+                //header.style.backgroundImage = "url('"+ this.response[i].movie.Poster + "')";
+                header.style.backgroundImage = "url('api/movies/" + this.response[i].movie.id  + "')";
                 var h2 = document.createElement('h2');
                 h2.className = 'mdl-card__title-text';
                 var p = document.createElement('p');

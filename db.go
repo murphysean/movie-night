@@ -200,17 +200,18 @@ func UpdateUserPrefs(user *User) error {
 
 var getShowtimeStmt *sql.Stmt
 
-const getShowtimeSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.imdb, m.title, m.json 
+const getShowtimeSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.id, m.imdb, m.title, m.json 
 FROM showtimes st, movies m 
 WHERE st.movieid = m.id 
 AND st.id = ?`
 
 func GetShowtime(id int) (*Showtime, error) {
+	var mid int
 	var mi string
 	var mt string
 	var j string
 	st := new(Showtime)
-	err := getShowtimeStmt.QueryRow(id).Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mi, &mt, &j)
+	err := getShowtimeStmt.QueryRow(id).Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mid, &mi, &mt, &j)
 	if err != nil {
 		return nil, err
 	}
@@ -219,6 +220,7 @@ func GetShowtime(id int) (*Showtime, error) {
 	if err != nil {
 		return st, err
 	}
+	m.Id = id
 	m.Imdb = mi
 	m.MegaPlexTitle = mt
 	st.Movie = m
@@ -227,7 +229,7 @@ func GetShowtime(id int) (*Showtime, error) {
 
 var getShowtimesForWeekOfStmt *sql.Stmt
 
-const getShowtimesForWeekOfSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.imdb, m.title, m.json,
+const getShowtimesForWeekOfSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.id, m.imdb, m.title, m.json,
 	IFNULL(SUM(v.votes),0) globalvotes, IFNULL(pv.votes,0) personvote
 FROM showtimes st, movies m
 LEFT JOIN votes v ON st.id = v.showtimeid
@@ -246,10 +248,11 @@ func GetShowtimesForWeekOf(bow, eow time.Time, userId int) ([]*Showtime, error) 
 	}
 	for rows.Next() {
 		st := new(Showtime)
+		var mid int
 		var mi string
 		var mt string
 		var j string
-		err = rows.Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mi, &mt, &j, &st.Votes, &st.Vote)
+		err = rows.Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mid, &mi, &mt, &j, &st.Votes, &st.Vote)
 		if err != nil {
 			return showtimes, err
 		}
@@ -258,6 +261,7 @@ func GetShowtimesForWeekOf(bow, eow time.Time, userId int) ([]*Showtime, error) 
 		if err != nil {
 			return showtimes, err
 		}
+		m.Id = mid
 		m.Imdb = mi
 		m.MegaPlexTitle = mt
 		st.Movie = m
@@ -269,7 +273,7 @@ func GetShowtimesForWeekOf(bow, eow time.Time, userId int) ([]*Showtime, error) 
 
 var getTopShowtimesForWeekOfStmt *sql.Stmt
 
-const getTopShowtimesForWeekOfSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.imdb, m.title, m.json,
+const getTopShowtimesForWeekOfSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.id, m.imdb, m.title, m.json,
 	IFNULL(SUM(v.votes),0) globalvotes
 FROM showtimes st, movies m
 LEFT JOIN votes v ON st.id = v.showtimeid
@@ -286,10 +290,11 @@ func GetTopShowtimesForWeekOf(bow, eow time.Time, topN int) ([]*Showtime, error)
 	}
 	for rows.Next() {
 		st := new(Showtime)
+		var mid int
 		var mi string
 		var mt string
 		var j string
-		err = rows.Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mi, &mt, &j, &st.Votes)
+		err = rows.Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mid, &mi, &mt, &j, &st.Votes)
 		if err != nil {
 			return showtimes, err
 		}
@@ -298,6 +303,7 @@ func GetTopShowtimesForWeekOf(bow, eow time.Time, topN int) ([]*Showtime, error)
 		if err != nil {
 			return showtimes, err
 		}
+		m.Id = mid
 		m.Imdb = mi
 		m.MegaPlexTitle = mt
 		st.Movie = m

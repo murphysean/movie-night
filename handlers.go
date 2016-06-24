@@ -535,6 +535,59 @@ func PrefsHandler(w http.ResponseWriter, r *http.Request) {
 ///////////////////////////////////////////////////////////////////////////////////////////
 //API SECTION
 
+var imageCache = make(map[int][]byte)
+
+func APIMoviesHandler(w http.ResponseWriter, r *http.Request) {
+	var movieId int = -1
+	var err error
+	re := regexp.MustCompile(`/api/movies/([^/]*)`)
+	pmidm := re.FindStringSubmatch(r.URL.Path)
+	if len(pmidm) > 1 {
+		movieId, err = strconv.Atoi(pmidm[1])
+		if err != nil {
+			movieId = -1
+		}
+	}
+	if movieId < 0 {
+		http.Error(w, "Invalid Movie Identifier", http.StatusNotFound)
+		return
+	}
+
+	m, err := GetMovie(movieId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Vary", "Accept")
+	if strings.Contains(r.Header.Get("Accept"), "image/*") {
+		w.Header().Set("Cache-Control", "max-age=86400")
+		if b, ok := imageCache[m.Id]; ok {
+			w.Write(b)
+		} else {
+			resp, err := http.Get(m.Poster)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			defer resp.Body.Close()
+			b, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			imageCache[movieId] = b
+			w.Write(b)
+		}
+	} else {
+		e := json.NewEncoder(w)
+		err = e.Encode(&m)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 // This api handler will respond with the available showtimes for the current week on a GET
 // request. On a POST or PUT request it will update the votes for the current user.
 func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
@@ -853,7 +906,10 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Set("Vary", "Accept")
+
 	if renderImg {
+		w.Header().Set("Cache-Control", "max-age=1800")
 		rgba := image.NewRGBA(image.Rect(0, 0, width, height))
 		x := 0
 		y := -1

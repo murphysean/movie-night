@@ -179,6 +179,7 @@ func main() {
 	http.HandleFunc("/vote", VoteHandler)
 	http.HandleFunc("/prefs", PrefsHandler)
 
+	http.HandleFunc("/api/movies/", APIMoviesHandler)
 	http.HandleFunc("/api/showtimes", APIShowtimesHandler)
 	http.HandleFunc("/api/users/", APIUsersHandler)
 	http.HandleFunc("/api/login", APILoginHandler)
