@@ -112,6 +112,7 @@ function initShowtimes(){
                 button.style = 'float:right;'
                 button.className = 'mdl-button mdl-js-button mdl-button--icon';
                 button.innerHTML = '<i class="material-icons">more_vert</i>';
+		
                 var ul = document.createElement('ul');
                 ul.className = 'mdl-menu mdl-menu--top-right mdl-js-menu mdl-js-ripple-effect';
                 var data = document.createAttribute("data-mdl-for");
@@ -142,11 +143,13 @@ function initShowtimes(){
                 article.appendChild(div);
 
                 componentHandler.upgradeElement(article);
+		componentHandler.upgradeElement(button);
                 document.querySelector('#showtimes').appendChild(article);
             }
             if(document.querySelector('#my-remaining-votes').innerHTML != "Login"){
                 document.querySelector('#my-remaining-votes').setAttribute("data-badge", remainingVotes);
             }
+	    componentHandler.upgradeAllRegistered();
         }
     }
     showtimesxhr.send();

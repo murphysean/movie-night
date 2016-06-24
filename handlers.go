@@ -590,14 +590,7 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		showtimes, _ := GetTopShowtimesForWeekOf(bow, eow, 3)
-		//Post Activity to buzz channel
-		buzz := fmt.Sprintf("%s just voted for movie night. %s@%s leads with %d votes.",
-			u.Name, showtimes[0].Movie.Title,
-			showtimes[0].Showtime.Local().Format(time.Kitchen), showtimes[0].Votes)
-		go SendBuzzMessage("Movie-Night: New Votes!", buzz)
-		//Send Activity email to all
-		go SendActivityEmails(u, votes, showtimes, bow, eow)
+		activityChannel <- Activity{User: u, Votes: votes}
 	case http.MethodGet:
 		var sts []*Showtime
 		if u == nil {

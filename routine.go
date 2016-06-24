@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -266,6 +267,81 @@ func LockEmailRoutine(day, hour, minute int) {
 			}
 		}
 		time.Sleep(time.Hour)
+	}
+}
+
+type Activity struct {
+	User  *User
+	Votes []*Showtime
+	Time  time.Time
+}
+
+var activityChannel = make(chan Activity)
+var userActivityMap = UserActivityMap{
+	uam:             make(map[int]*Activity),
+	nextAvailableAt: time.Now()}
+
+type UserActivityMap struct {
+	sync.Mutex
+	uam             map[int]*Activity
+	nextAvailableAt time.Time
+}
+
+func (uam *UserActivityMap) NewActivity(activity Activity) {
+	uam.Lock()
+	defer uam.Unlock()
+	activity.Time = time.Now().Add(time.Second * 90)
+	uam.uam[activity.User.Id] = &activity
+	uam.nextAvailableAt = activity.Time
+}
+
+func (uam *UserActivityMap) GetNextAvailableActivity() (*Activity, time.Time) {
+	uam.Lock()
+	defer uam.Unlock()
+	if time.Now().After(uam.nextAvailableAt) {
+		uam.nextAvailableAt = time.Now().Add(time.Second * 30)
+	}
+	//If there is an activity that has timed out, return it
+	for k, v := range uam.uam {
+		if v == nil {
+			continue
+		}
+		//If the activity time is in the past, return and remove
+		if time.Now().After(v.Time) {
+			defer delete(uam.uam, k)
+			return v, uam.nextAvailableAt
+		}
+	}
+	return nil, uam.nextAvailableAt
+}
+
+func ActivityProcessingRoutine() {
+	//Will continually recieve activity until the channel is closed
+	for i := range activityChannel {
+		userActivityMap.NewActivity(i)
+		//TODO push this to all the SSE connections
+	}
+}
+
+func DelayedActivityNotificationRoutine() {
+	for {
+		//Pull relevant activities off of the map
+		bow, eow := GetBeginningAndEndOfWeekForTime(time.Now())
+		showtimes, _ := GetTopShowtimesForWeekOf(bow, eow, 3)
+		var a *Activity
+		var t time.Time
+		for a, t = userActivityMap.GetNextAvailableActivity(); a != nil; a, t = userActivityMap.GetNextAvailableActivity() {
+			//Send a buzz message to the channel
+			buzz := fmt.Sprintf("%s voted for movie night. %s@%s leads with %d votes.",
+				a.User.Name, showtimes[0].Movie.Title,
+				showtimes[0].Showtime.Local().Format(time.Kitchen), showtimes[0].Votes)
+			go SendBuzzMessage("Movie-Night: New Votes!", buzz)
+			//Send Activity email to all
+			go SendActivityEmails(a.User, a.Votes, showtimes, bow, eow)
+		}
+
+		//Sleep 30 seconds, or until the next activity is due
+		time.Sleep(t.Sub(time.Now()))
 	}
 }
 

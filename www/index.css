@@ -2,6 +2,10 @@ html, body {
   font-family: 'Roboto', 'Helvetica', sans-serif;
 }
 
+/*.mdl-layout-link {
+	cursor:pointer;
+}*/
+
 .mn-card-square.mdl-card {
   width: 320px;
   height: 320px;
