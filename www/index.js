@@ -464,8 +464,8 @@ sseSource.addEventListener('activity', function(e){
 
 sseSource.addEventListener('rsvp', function(e){
 	//TODO Pop up a toast informing people that so and so is going
-	//document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:o.user.name + " just voted!"});
-	console.log(e.data);
+	let o = JSON.parse(e.data);
+	document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:o.user.name + " just rsvp'd: " + o.value});
 }, false);
 
 initMe();
