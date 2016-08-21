@@ -9,3 +9,7 @@ Yes: {{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac
 No: {{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac={{.Hmac}}&value=DECLINE
 
 Maybe: {{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac={{.Hmac}}&value=TENATIVE"
+
+View Seating Here: http://www.megaplextheatres.com{{.Winner.PreviewSeatsLink}}
+
+Purchace Tickets Here: http://www.megaplextheatres.com{{.Winner.BuyTicketsLink}}

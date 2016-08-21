@@ -24,7 +24,7 @@ var dbInits = []string{
 var dbCreates = []string{
 	"CREATE TABLE IF NOT EXISTS version (id INTEGER PRIMARY KEY, version TEXT)",
 	"INSERT INTO version (version) VALUES ('" + version + "')",
-	"CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT, ott TEXT, weekly_not INTEGER DEFAULT 1, lock_not INTEGER DEFAULT 1, act_not INTEGER DEFAULT 0, giftcard TEXT NOT NULL DEFAULT '', giftcardpin TEXT NOT NULL DEFAULT '', rewardcard TEXT NOT NULL DEFAULT '', zip TEXT NOT NULL DEFAULT '84043')",
+	"CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT, ott TEXT, weekly_not INTEGER DEFAULT 1, lock_not INTEGER DEFAULT 1, act_not INTEGER DEFAULT 0, giftcard TEXT NOT NULL DEFAULT '', giftcardpin TEXT NOT NULL DEFAULT '', rewardcard TEXT NOT NULL DEFAULT '', zip TEXT NOT NULL DEFAULT '84043', phone TEXT NOT NULL DEFAULT '', carrier TEXT NOT NULL DEFAULT '')",
 	"CREATE TABLE IF NOT EXISTS abilities (userid INTEGER NOT NULL, ability TEXT NOT NULL, PRIMARY KEY(userid,ability), FOREIGN KEY(userid) REFERENCES users(id))",
 	"CREATE TABLE IF NOT EXISTS movies (id INTEGER NOT NULL PRIMARY KEY, imdb TEXT NOT NULL DEFAULT 'unknown', title TEXT NOT NULL DEFAULT 'UNKNOWN', json TEXT NOT NULL DEFAULT '{}')",
 	"CREATE TABLE IF NOT EXISTS showtimes (id INTEGER NOT NULL PRIMARY KEY, movieid INTEGER NOT NULL, showtime TIMESTAMP NOT NULL, screen TEXT NOT NULL, location TEXT NOT NULL, address TEXT NOT NULL, preview TEXT NOT NULL, buy TEXT NOT NULL, FOREIGN KEY(movieid) REFERENCES movies(id))",
@@ -52,6 +52,7 @@ func InitDB(db *sql.DB) {
 	}
 
 	validateUserStmt = mustPrepare(validateUserSql)
+	resetPasswordStmt = mustPrepare(resetPasswordSql)
 	registerUserStmt = mustPrepare(registerUserSql)
 	finishRegistrationStmt = mustPrepare(finishRegistrationSql)
 	getUserStmt = mustPrepare(getUserSql)
@@ -94,6 +95,18 @@ func ValidateUser(email, password string) (*User, error) {
 	return u, nil
 }
 
+var resetPasswordStmt *sql.Stmt
+
+const resetPasswordSql = `UPDATE users SET ott = ? WHERE email = ?`
+
+func ResetPassword(email, ott string) (*User, error) {
+	_, err := resetPasswordStmt.Exec(ott, email)
+	if err != nil {
+		return nil, err
+	}
+	return GetUserForEmail(email)
+}
+
 var registerUserStmt *sql.Stmt
 
 const registerUserSql = `INSERT INTO users (name, email, ott) VALUES(?,?,?)`
@@ -134,11 +147,11 @@ func FinishRegistration(ott, password string) (*User, error) {
 
 var getUserStmt *sql.Stmt
 
-const getUserSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, giftcardpin, rewardcard, zip FROM users WHERE id = ? LIMIT 1`
+const getUserSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, giftcardpin, rewardcard, zip, phone, carrier FROM users WHERE id = ? LIMIT 1`
 
 func GetUser(id int) (*User, error) {
 	u := new(User)
-	err := getUserStmt.QueryRow(id).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip)
+	err := getUserStmt.QueryRow(id).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip, &u.Phone, &u.Carrier)
 	if err != nil {
 		return nil, err
 	}
@@ -147,11 +160,11 @@ func GetUser(id int) (*User, error) {
 
 var getUserForEmailStmt *sql.Stmt
 
-const getUserForEmailSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, giftcardpin, rewardcard, zip FROM users WHERE email LIKE ? LIMIT 1`
+const getUserForEmailSql = `SELECT id, name, email, weekly_not, lock_not, act_not, giftcard, giftcardpin, rewardcard, zip, phone, carrier FROM users WHERE email LIKE ? LIMIT 1`
 
 func GetUserForEmail(email string) (*User, error) {
 	u := new(User)
-	err := getUserForEmailStmt.QueryRow(email).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip)
+	err := getUserForEmailStmt.QueryRow(email).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip, &u.Phone, &u.Carrier)
 	if err != nil {
 		return nil, err
 	}
@@ -188,21 +201,32 @@ func GetUsersForPreference(n PreferenceType) ([]*User, error) {
 
 var updateUserPrefsStmt *sql.Stmt
 
-const updateUserPrefsSql = `UPDATE users SET weekly_not = ?, lock_not = ?, act_not = ?, giftcard = ?, giftcardpin = ?, rewardcard = ?, zip = ? WHERE id = ?`
+const updateUserPrefsSql = `UPDATE users SET weekly_not = ?, lock_not = ?, act_not = ?, giftcard = ?, giftcardpin = ?, rewardcard = ?, zip = ?, phone = ?, carrier = ? WHERE id = ?`
 
 func UpdateUserPrefs(user *User) error {
-	_, err := updateUserPrefsStmt.Exec(user.WeeklyNotification, user.LockNotification, user.ActivityNotification, user.GiftCard, user.GiftCardPin, user.RewardCard, user.Zip, user.Id)
+	_, err := updateUserPrefsStmt.Exec(user.WeeklyNotification, user.LockNotification, user.ActivityNotification, user.GiftCard, user.GiftCardPin, user.RewardCard, user.Zip, user.Phone, user.Carrier, user.Id)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+func ScrubUser(user *User) *User {
+	user.GiftCard = ""
+	user.GiftCardPin = ""
+	user.RewardCard = ""
+	user.Zip = ""
+	user.Phone = ""
+	user.Carrier = ""
+	return user
+}
+
 var getShowtimeStmt *sql.Stmt
 
-const getShowtimeSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.id, m.imdb, m.title, m.json 
-FROM showtimes st, movies m 
+const getShowtimeSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.id, m.imdb, m.title, m.json, IFNULL(SUM(v.votes),0) votes  
+FROM showtimes st, movies m, votes v
 WHERE st.movieid = m.id 
+AND st.id = v.showtimeid 
 AND st.id = ?`
 
 func GetShowtime(id int) (*Showtime, error) {
@@ -211,7 +235,7 @@ func GetShowtime(id int) (*Showtime, error) {
 	var mt string
 	var j string
 	st := new(Showtime)
-	err := getShowtimeStmt.QueryRow(id).Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mid, &mi, &mt, &j)
+	err := getShowtimeStmt.QueryRow(id).Scan(&st.Id, &st.MovieId, &st.Showtime, &st.Screen, &st.Location, &st.Address, &st.PreviewSeatsLink, &st.BuyTicketsLink, &mid, &mi, &mt, &j, &st.Votes)
 	if err != nil {
 		return nil, err
 	}

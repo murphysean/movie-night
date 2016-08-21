@@ -44,12 +44,13 @@
 		<h4 class="mdl-dialog__title">Login</h4>
 		<div class="mdl-dialog__content">
 		<form id="login-form" method="dialog">
-			<p>Email:<input type="text" name="email"/></p>
+			<p>Email:<input id="login-form-email" type="text" name="email"/></p>
 			<p>Password:<input type="password" name="password"/></p>
 		</form>
-		<p><a href="register">Register</a></p>
 		</div>
 		<div class="mdl-dialog__actions">
+			<button class="mdl-button" onclick="document.querySelector('#login').close();document.querySelector('#register').showModal();">Register</button>
+			<button class="mdl-button" onclick="postRequestResetPassword(document.querySelector('#login-form-email').value)">Reset Password</button>
 			<button class="mdl-button" type="submit" form="login-form" value="submit" onclick="postLogin(new FormData(document.querySelector('#login-form')))">Submit</button>
 			<button type="button" class="mdl-button close" onclick="document.querySelector('#login').close()">Cancel</button>
 		</div>
@@ -65,11 +66,47 @@
 			<p>GiftCard<i class="material-icons">card_giftcard</i> Pin:<input type="text" name="giftcardpin"></p>
 			<p>RewardCard<i class="material-icons">card_membership</i>:<input type="text" name="rewardcard"></p>
 			<p>Zip:<input type="text" name="zip"></p>
+			<p>Phone<i class="material-icons">local_phone</i>:<input type="text" name="phone"></p>
+			<p>Carrier:
+				<select name="carrier">
+					<option value="tmobile">T-Mobile</option>
+					<option value="verizon">Verizon</option>
+					<option value="sprint">Sprint</option>
+					<option value="att">AT&amp;T</option>
+					<option value="other">Other</option>
+				</select>
+			</p>
 		</form>
 		</div>
 		<div class="mdl-dialog__actions">
 			<button type="submit" class="mdl-button" form="settings-form" value="submit" onclick="postSettings(new FormData(document.querySelector('#settings-form')))">Submit</button>
 			<button type="button" class="mdl-button close" onclick="document.querySelector('#settings').close()">Close</button>
+		</div>
+	</dialog>
+	<dialog id="register" class="mdl-dialog">
+		<h4 class="mdl-dialog__title">Register</h4>
+		<div class="mdl-dialog__content">
+		<form id="register-form" method="dialog">
+			<p>Name:<input type="text" name="name"></p>
+			<p>Email:<input type="email" name="email"></p>
+		</form>
+		</div>
+		<div class="mdl-dialog__actions">
+			<button type="submit" class="mdl-button" form="register-form" value="submit" onclick="postRegister(new FormData(document.querySelector('#register-form')))">Submit</button>
+			<button type="button" class="mdl-button close" onclick="document.querySelector('#register').close()">Close</button>
+		</div>
+	</dialog>
+	<dialog id="resetpassword" class="mdl-dialog">
+		<h4 class="mdl-dialog__title">Reset Password</h4>
+		<div class="mdl-dialog__content">
+		<form id="resetpassword-form" method="dialog">
+			<input id="resetpassword-form-ott" type="hidden" name="ott">
+			<p>Password:<input type="password" name="password"></p>
+		</form>
+		</div>
+		<div class="mdl-dialog__actions">
+			<button type="submit" class="mdl-button" form="resetpassword-form" value="submit" onclick="postResetPassword(new FormData(document.querySelector('#resetpassword-form')))">Submit</button>
+			<button type="button" class="mdl-button close" onclick="document.querySelector('#resetpassword').close()">Close</button>
 		</div>
 	</dialog>
 </body>

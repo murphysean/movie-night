@@ -16,9 +16,11 @@ import (
 )
 
 type User struct {
-	Id    int    `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Id      int    `json:"id"`
+	Name    string `json:"name"`
+	Email   string `json:"email"`
+	Phone   string `json:"phone"`
+	Carrier string `json:"carrier"`
 
 	GiftCard    string `json:"giftCard"`
 	GiftCardPin string `json:"giftCardPin"`
@@ -92,7 +94,7 @@ func (n PreferenceType) String() string {
 	return "undefined"
 }
 
-const version = `02.04.00`
+const version = `02.05.00`
 
 // The mnt variable is the global template variable
 var mnt *template.Template
@@ -123,9 +125,6 @@ var lockMinute = flag.Int("lockMinute", 30, "The minutes within the hour the loc
 var salt = flag.String("salt", "$murphyseanmovienight$:", "The salt to use to hash user passwords")
 var appUrl = flag.String("url", "http://localhost:9000/", "The url prefix to use for callback urls")
 
-// Serve the templated home file, or serve the www directory
-var serveWWW = flag.Bool("www", true, "This toggles serving the templated home.html file on / vs serving the www directory")
-
 // This map contains a mapping of the session identifier cookie to the user id
 // that is logged in via this cookie
 var sessions = make(map[string]int)
@@ -153,7 +152,6 @@ func main() {
 	log.Printf("lockMinute:%d\n", *lockMinute)
 	log.Printf("salt:%s\n", *salt)
 	log.Printf("appUrl:%s\n", *appUrl)
-	log.Printf("serveWWW:%t\n", *serveWWW)
 
 	var err error
 	db, err = sql.Open("sqlite3", "mn.db")
@@ -166,24 +164,16 @@ func main() {
 	//Parse and associate all templates
 	mnt = template.Must(template.ParseGlob("templates/*"))
 
-	if *serveWWW {
-		fmt.Println("Serving www dir")
-		http.Handle("/", http.FileServer(http.Dir("www")))
-		http.HandleFunc("/home", HomeHandler)
-	} else {
-		fmt.Println("Serving templated index file")
-		http.HandleFunc("/", HomeHandler)
-	}
-	http.HandleFunc("/login", LoginHandler)
-	http.HandleFunc("/register", RegisterHandler)
-	http.HandleFunc("/vote", VoteHandler)
-	http.HandleFunc("/prefs", PrefsHandler)
+	fmt.Println("Serving www dir")
+	http.Handle("/", http.FileServer(http.Dir("www")))
 
 	http.HandleFunc("/api/movies/", APIMoviesHandler)
 	http.HandleFunc("/api/showtimes", APIShowtimesHandler)
 	http.HandleFunc("/api/users/", APIUsersHandler)
 	http.HandleFunc("/api/login", APILoginHandler)
+	http.HandleFunc("/api/password", APIResetPasswordHandler)
 	http.HandleFunc("/api/preview", APIPreviewHandler)
+	http.HandleFunc("/api/sse", APISSE)
 
 	http.HandleFunc("/admin/movie", AdminMovieHandler)
 	http.HandleFunc("/admin/showtime", AdminShowtimeHandler)

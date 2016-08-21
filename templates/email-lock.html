@@ -17,10 +17,8 @@
 	<div itemprop="location" itemscope itemtype="http://schema.org/Place">
 		<div itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
 			<meta itemprop="name" content="Megaplex Theatres Thanksgiving Point"/>
-			<meta itemprop="streetAddress" content="2935 Thanksgiving Way"/>
-			<meta itemprop="addressLocality" content="Lehi"/>
+			<meta itemprop="streetAddress" content="{{.Winner.Address}}"/>
 			<meta itemprop="addressRegion" content="UT"/>
-			<meta itemprop="postalCode" content="84043"/>
 			<meta itemprop="addressCountry" content="USA"/>
 		</div>
 	</div>
@@ -51,8 +49,9 @@
 	<p>RSVP: <a href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac={{.Hmac}}&value=DECLINE">No</a></p>
 	<p>RSVP: <a href="{{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac={{.Hmac}}&value=TENATIVE">Maybe</a></p>
 </div>
-<p>Click <a href="{{.UrlPre}}vote">here</a> to change your notification preferences or unsubscribe</p>
-<p>Visit <a href="http://www.megaplextheatres.com/D-Theatre_Movietimes/Lehi_Thanksgiving_Point_UT#&&date={{.Winner.Showtime.Local.Format "01-02-2006"}}">megaplex</a> to purchase tickets</p>
+<p>Click <a href="{{.UrlPre}}">here</a> to change your notification preferences or unsubscribe</p>
+<p>Visit <a href="http://www.megaplextheatres.com{{.Winner.PreviewSeatsLink}}">megaplex</a> to view seating availability</p>
+<p>Visit <a href="http://www.megaplextheatres.com{{.Winner.BuyTicketsLink}}">megaplex</a> to purchase tickets</p>
 <p>Any complaints about the stylistic simplicity of this email? <a href="http://motherfuckingwebsite.com/">Learn more here</a></p>
 </body>
 </html>

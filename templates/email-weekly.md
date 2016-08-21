@@ -16,4 +16,4 @@ At the moment here is where the vote stands:
 	{{.Movie.Title}} @ {{.Showtime.Local.Format "3:04PM"}} in {{.Screen}} with {{.Votes}} votes
 {{end}}
 
-Visit {{.UrlPre}}vote to change your notification preferences or unsubscribe
+Visit {{.UrlPre}} to change your notification preferences or unsubscribe

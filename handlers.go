@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -112,50 +113,69 @@ func AdminLockHandler(w http.ResponseWriter, r *http.Request) {
 
 // From emails I've seen, DECLINED, ACCEPTED
 func RsvpResponseHandler(w http.ResponseWriter, r *http.Request) {
-	userIdString := r.URL.Query().Get("userId")
+	var u *User
+	c, err := r.Cookie("movienightsid")
+	if err == nil && sessions[c.Value] > 0 {
+		u, _ = GetUser(sessions[c.Value])
+	} else {
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			if sessions[authHeader[7:]] > 0 {
+				fmt.Println("DEBUG: HEADER FOUND")
+				u, _ = GetUser(sessions[authHeader[7:]])
+			}
+		}
+	}
 	showtimeIdString := r.URL.Query().Get("showtimeId")
 	value := r.URL.Query().Get("value")
-
-	if userIdString == "" || showtimeIdString == "" || value == "" {
-		fmt.Println("Bad Rsvp Response")
-		http.Error(w, "Bad Rsvp Response", http.StatusBadRequest)
+	if showtimeIdString == "" || value == "" {
+		fmt.Println("Bad Rsvp Response: showtimeId/value")
+		http.Error(w, "Bad Rsvp Response: showtimeId/value", http.StatusBadRequest)
 		return
 	}
-	mac := hmac.New(sha256.New, []byte(*salt))
-	mac.Write([]byte(userIdString + showtimeIdString))
-	hmac := base64.StdEncoding.EncodeToString(mac.Sum(nil))
-	if hmac != r.URL.Query().Get("hmac") {
-		fmt.Println("Unauthorized Rsvp Response")
-		http.Error(w, "Unauthorized Rsvp Response", http.StatusUnauthorized)
-		return
-	}
+	if u == nil {
+		userIdString := r.URL.Query().Get("userId")
+		if userIdString == "" {
+			fmt.Println("Bad Rsvp Response: userId")
+			http.Error(w, "Bad Rsvp Response", http.StatusBadRequest)
+			return
+		}
+		mac := hmac.New(sha256.New, []byte(*salt))
+		mac.Write([]byte(userIdString + showtimeIdString))
+		hmac := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+		if hmac != r.URL.Query().Get("hmac") {
+			fmt.Println("Unauthorized Rsvp Response")
+			http.Error(w, "Unauthorized Rsvp Response", http.StatusUnauthorized)
+			return
+		}
 
-	var userId int
-	_, err := fmt.Sscanf(userIdString, "%d", &userId)
-	if err != nil {
-		fmt.Println("Bad Rsvp Response", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+		var userId int
+		_, err := fmt.Sscanf(userIdString, "%d", &userId)
+		if err != nil {
+			fmt.Println("Bad Rsvp Response: userId int", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-	u, err := GetUser(userId)
-	if err != nil {
-		fmt.Println("Bad Rsvp Response", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		u, err = GetUser(userId)
+		if err != nil {
+			fmt.Println("Bad Rsvp Response: invalid userId", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	var showtimeId int
 	_, err = fmt.Sscanf(showtimeIdString, "%d", &showtimeId)
 	if err != nil {
-		fmt.Println("Bad Rsvp Response", err)
+		fmt.Println("Bad Rsvp Response: showtimeId int", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	st, err := GetShowtime(showtimeId)
 	if err != nil {
-		fmt.Println("Bad Rsvp Response", err)
+		fmt.Println("Bad Rsvp Response: invalid showtime", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -163,6 +183,8 @@ func RsvpResponseHandler(w http.ResponseWriter, r *http.Request) {
 	buzz := fmt.Sprintf("%s: %s", u.Name, value)
 	InsertRsvp(u.Id, st.Id, value)
 	go SendBuzzMessage("Movie-Night: RSVP", buzz)
+	ScrubUser(u)
+	sseManager.SendRSVP(u, value)
 	fmt.Println(buzz)
 }
 
@@ -265,277 +287,34 @@ func getCalResponse(cal []byte) (status string) {
 	return "UNKNOWN"
 }
 
-// The login handler
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	//If logged in redirect to home
-	c, err := r.Cookie("movienightsid")
-	if err == nil {
-		if sessions[c.Value] > 0 {
-			http.Redirect(w, r, "./", http.StatusSeeOther)
-			return
-		}
-	}
-
-	//If a POST with creds 1.Validate Creds, 2.Write out cookie session id, 3.Redirect to home
-	if r.Method == http.MethodPost {
-		email := r.PostFormValue("email")
-		pass := r.PostFormValue("password")
-		if u, err := ValidateUser(email, pass); err == nil {
-			nc := new(http.Cookie)
-			nc.Name = "movienightsid"
-			nc.Value = GenUUIDv4()
-			nc.Expires = time.Now().Add(time.Hour * 24 * 365)
-			sessions[nc.Value] = u.Id
-			http.SetCookie(w, nc)
-			http.Redirect(w, r, "./", http.StatusSeeOther)
-			return
-		}
-	}
-	//If not logged in, show the login screen
-	n := time.Now()
-	bow, eow := GetBeginningAndEndOfWeekForTime(n)
-	showtimes, _ := GetTopShowtimesForWeekOf(bow, eow, 10)
-	var params = struct {
-		Showtimes []*Showtime
-	}{Showtimes: showtimes}
-	if err = mnt.ExecuteTemplate(w, "web-login.html", params); err != nil {
-		log.Println(err)
-	}
-}
-
-// The register handler
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	//If logged in redirect to home
-	c, err := r.Cookie("movienightsid")
-	if err == nil {
-		if sessions[c.Value] > 0 {
-			http.Redirect(w, r, "./", http.StatusSeeOther)
-			return
-		}
-	}
-	type registerObj struct {
-		Show string
-		OTT  string
-		Name string
-	}
-	//If a get with a token (link from email) show password prompt
-	if ott := r.URL.Query().Get("ott"); ott != "" {
-		user, err := GetUserForOtt(ott)
-		if err != nil {
-			log.Println("RegisterHandler:1:", err)
-		} else {
-			if err = mnt.ExecuteTemplate(w, "web-register.html", registerObj{Show: "ott", OTT: ott, Name: user.Name}); err != nil {
-				log.Println(err)
-			}
-			return
-		}
-	}
-
-	//If a POST with registration 1.Validate Registration details, 2.Save new user to db, 3.Show whats next page
-	if r.Method == http.MethodPost {
-		switch r.URL.Query().Get("ep") {
-		case "ott":
-			ott := r.PostFormValue("ott")
-			password := r.PostFormValue("password")
-			u, err := FinishRegistration(ott, password)
-			if err == nil {
-				//Log them in
-				nc := new(http.Cookie)
-				nc.Name = "movienightsid"
-				nc.Value = GenUUIDv4()
-				nc.Expires = time.Now().Add(time.Hour * 24 * 365)
-				sessions[nc.Value] = u.Id
-				http.SetCookie(w, nc)
-				http.Redirect(w, r, "./", http.StatusSeeOther)
-				return
-			}
-		case "reg":
-			name := r.PostFormValue("name")
-			email := r.PostFormValue("email")
-			ott := GenUUIDv4()
-			u, err := RegisterUser(name, email, ott)
-			if err == nil {
-				SendRegistrationEmail(u, ott)
-				if err = mnt.ExecuteTemplate(w, "web-register.html", registerObj{Show: "wn", Name: u.Name}); err != nil {
-					log.Println(err)
-				}
-				return
-			}
-		}
-	}
-	if err = mnt.ExecuteTemplate(w, "web-register.html", registerObj{}); err != nil {
-		log.Println(err)
-	}
-}
-
-// The home page handler... shows next movie night and previous movie night results
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	//If not logged in redirect to login
-	c, err := r.Cookie("movienightsid")
-	if err == nil {
-		if sessions[c.Value] == 0 {
-			http.Redirect(w, r, "./login", http.StatusSeeOther)
-			return
-		}
-	} else {
-		http.Redirect(w, r, "./login", http.StatusSeeOther)
-		return
-	}
-	type homeObj struct {
-		User      *User
-		Showtimes []*Showtime
-	}
-	u, err := GetUser(sessions[c.Value])
-	if err != nil {
-		http.Redirect(w, r, "./login", http.StatusSeeOther)
-		return
-	}
-	n := time.Now()
-	bow, eow := GetBeginningAndEndOfWeekForTime(n)
-	sts, err := GetShowtimesForWeekOf(bow, eow, sessions[c.Value])
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err = mnt.ExecuteTemplate(w, "web-home.html", homeObj{User: u, Showtimes: sts}); err != nil {
-		log.Println(err)
-	}
-}
-
-// The vote handler
-func VoteHandler(w http.ResponseWriter, r *http.Request) {
-	//If not logged in redirect to home
-	c, err := r.Cookie("movienightsid")
-	if err == nil {
-		if sessions[c.Value] == 0 {
-			http.Redirect(w, r, "./", http.StatusSeeOther)
-			return
-		}
-	} else {
-		http.Redirect(w, r, "./", http.StatusSeeOther)
-		return
-	}
-	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "./", http.StatusSeeOther)
-		return
-	}
-	user, err := GetUser(sessions[c.Value])
-	if err != nil {
-		log.Println("Error Getting User")
-		return
-	}
-
-	votes := make([]*Showtime, 0)
-	err = r.ParseForm()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	for key, values := range r.Form {
-		for _, value := range values {
-			var showtimeId int
-			_, err = fmt.Sscanf(key, "%d", &showtimeId)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			var vote int
-			_, err = fmt.Sscanf(value, "%d", &vote)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			v, err := GetShowtime(showtimeId)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			v.Vote = vote
-			if v.Vote > 0 || v.Vote == -1 {
-				votes = append(votes, v)
-			}
-		}
-	}
-
-	n := time.Now()
-	bow, eow := GetBeginningAndEndOfWeekForTime(n)
-
-	sum := 0
-	for _, v := range votes {
-
-		if v.Vote > 3 {
-			http.Error(w, "No vote can be greater than 3", http.StatusBadRequest)
-			return
-		}
-		if v.Vote < -1 {
-			http.Error(w, "No vote can be less than -1", http.StatusBadRequest)
-			return
-		}
-		if v.Vote > 0 {
-			sum += v.Vote
-		}
-	}
-	if sum > 6 {
-		http.Error(w, "Sum of all votes can't exceed 6", http.StatusBadRequest)
-		return
-	}
-	err = InsertVotesForUser(bow, eow, sessions[c.Value], votes)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	showtimes, _ := GetTopShowtimesForWeekOf(bow, eow, 3)
-
-	//Post Activity to buzz channel
-	buzz := fmt.Sprintf("%s just voted for movie night. %s@%s leads with %d votes.",
-		user.Name, showtimes[0].Movie.Title,
-		showtimes[0].Showtime.Local().Format(time.Kitchen), showtimes[0].Votes)
-	go SendBuzzMessage("Movie-Night: New Votes!", buzz)
-	//Send Activity email to all
-	go SendActivityEmails(user, votes, showtimes, bow, eow)
-
-	http.Redirect(w, r, "./", http.StatusSeeOther)
-}
-
-// The preferences handler
-func PrefsHandler(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie("movienightsid")
-	if err == nil && sessions[c.Value] > 0 && r.Method == http.MethodPost {
-		if u, err := GetUser(sessions[c.Value]); err == nil {
-			u.WeeklyNotification = false
-			u.LockNotification = false
-			u.ActivityNotification = false
-			if v := r.PostFormValue("weekly"); v != "" {
-				u.WeeklyNotification = true
-			}
-			if v := r.PostFormValue("lock"); v != "" {
-				u.LockNotification = true
-			}
-			if v := r.PostFormValue("activity"); v != "" {
-				u.ActivityNotification = true
-			}
-			if v := r.PostFormValue("giftcard"); v != "" {
-				u.GiftCard = v
-			}
-			if v := r.PostFormValue("giftcardpin"); v != "" {
-				u.GiftCardPin = v
-			}
-			if v := r.PostFormValue("rewardcard"); v != "" {
-				u.RewardCard = v
-			}
-			UpdateUserPrefs(u)
-		}
-	}
-
-	http.Redirect(w, r, "./", http.StatusSeeOther)
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 //API SECTION
 
-var imageCache = make(map[int][]byte)
+type ImageCache struct {
+	sync.RWMutex
+	Cache map[int][]byte
+}
+
+func NewImageCache() *ImageCache {
+	ret := new(ImageCache)
+	ret.Cache = make(map[int][]byte)
+	return ret
+}
+
+func (ic *ImageCache) Put(movieId int, bytes []byte) {
+	ic.Lock()
+	defer ic.Unlock()
+	ic.Cache[movieId] = bytes
+}
+
+func (ic *ImageCache) Get(movieId int) ([]byte, bool) {
+	ic.RLock()
+	defer ic.RUnlock()
+	b, ok := ic.Cache[movieId]
+	return b, ok
+}
+
+var imageCache = NewImageCache()
 
 func APIMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var movieId int = -1
@@ -560,9 +339,16 @@ func APIMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Vary", "Accept")
-	if strings.Contains(r.Header.Get("Accept"), "image/*") {
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		e := json.NewEncoder(w)
+		err = e.Encode(&m)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
 		w.Header().Set("Cache-Control", "max-age=86400")
-		if b, ok := imageCache[m.Id]; ok {
+		if b, ok := imageCache.Get(m.Id); ok {
 			w.Write(b)
 		} else {
 			resp, err := http.Get(m.Poster)
@@ -575,15 +361,8 @@ func APIMoviesHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			imageCache[movieId] = b
+			imageCache.Put(movieId, b)
 			w.Write(b)
-		}
-	} else {
-		e := json.NewEncoder(w)
-		err = e.Encode(&m)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
 		}
 	}
 }
@@ -638,6 +417,11 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Sum of all votes can't exceed 6", http.StatusBadRequest)
 			return
 		}
+		err = InsertVotesForUser(bow, eow, sessions[c.Value], votes)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		sts := make([]*Showtime, 0)
 		for _, s := range votes {
 			v, err := GetShowtime(s.Id)
@@ -651,11 +435,6 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		votes = sts
-		err = InsertVotesForUser(bow, eow, sessions[c.Value], votes)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 		activityChannel <- Activity{User: u, Votes: votes}
 	case http.MethodGet:
 		var sts []*Showtime
@@ -710,8 +489,171 @@ func APILoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func APIResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		email := r.URL.Query().Get("email")
+		//TODO Much like registering, gen a ott and put it on the user object
+		ott := GenUUIDv4()
+		u, err := ResetPassword(email, ott)
+		if err == nil {
+			SendRegistrationEmail(u, ott)
+		}
+		http.Error(w, "Accepted", http.StatusAccepted)
+		return
+	case http.MethodPost:
+		var resetObj = struct {
+			OTT      string `json:"ott"`
+			Password string `json:"password"`
+		}{}
+		d := json.NewDecoder(r.Body)
+		err := d.Decode(&resetObj)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		u, err := FinishRegistration(resetObj.OTT, resetObj.Password)
+		if err == nil {
+			//Log them in
+			nc := new(http.Cookie)
+			nc.Name = "movienightsid"
+			nc.Value = GenUUIDv4()
+			nc.Expires = time.Now().Add(time.Hour * 24 * 365)
+			sessions[nc.Value] = u.Id
+			http.SetCookie(w, nc)
+			http.Redirect(w, r, "./", http.StatusSeeOther)
+			return
+		}
+	}
+}
+
+type SSEEvent struct {
+	Id    int64  `json:"id"`
+	Event string `json:"event"`
+	Data  string `json:"data"`
+}
+
+type SSEManager struct {
+	sync.RWMutex
+	Counter  int64
+	Channels []chan SSEEvent
+}
+
+func (ssem *SSEManager) CreateConnection() <-chan SSEEvent {
+	ret := make(chan SSEEvent, 10)
+	ssem.Lock()
+	defer ssem.Unlock()
+	ssem.Channels = append(ssem.Channels, ret)
+	return ret
+}
+
+func (ssem *SSEManager) CloseConnection(val <-chan SSEEvent) {
+	ssem.Lock()
+	defer ssem.Unlock()
+	for i, v := range ssem.Channels {
+		if v == val {
+			ssem.Channels = append(ssem.Channels[:i], ssem.Channels[i+1:]...)
+		}
+	}
+}
+
+func (ssem *SSEManager) GetNextId() int64 {
+	ssem.Lock()
+	defer ssem.Unlock()
+	ret := ssem.Counter
+	ssem.Counter++
+	return ret
+}
+
+func (ssem *SSEManager) SendActivity(user *User, activity []*Showtime) {
+	nid := ssem.GetNextId()
+	ssem.RLock()
+	defer ssem.RUnlock()
+	a := struct {
+		User  *User       `json:"user"`
+		Votes []*Showtime `json:"votes"`
+	}{user, activity}
+	b, err := json.Marshal(&a)
+	if err != nil {
+		return
+	}
+	e := SSEEvent{nid, "activity", string(b)}
+	for _, c := range ssem.Channels {
+		c <- e
+	}
+}
+
+func (ssem *SSEManager) SendRSVP(user *User, value string) {
+	nid := ssem.GetNextId()
+	ssem.RLock()
+	defer ssem.RUnlock()
+	r := struct {
+		User  *User  `json:"user"`
+		Value string `json:"value"`
+	}{user, value}
+	b, err := json.Marshal(&r)
+	if err != nil {
+		return
+	}
+	e := SSEEvent{nid, "rsvp", string(b)}
+	for _, c := range ssem.Channels {
+		c <- e
+	}
+}
+
+var sseManager = new(SSEManager)
+
+func APISSE(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
+
+	sseChan := sseManager.CreateConnection()
+	defer sseManager.CloseConnection(sseChan)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	//Funnel all events in the system back down this pipe to the user
+	//Events include, new votes, rsvps, lock
+	fmt.Fprintf(w, "event: %d\n\n", "connectioncount")
+	fmt.Fprintf(w, "id: %d\n\n", sseManager.GetNextId)
+	fmt.Fprintf(w, "data: %d\n\n", len(sseManager.Channels))
+	flusher.Flush()
+
+	for {
+		var event string = "keepalive"
+		var id int64 = 0
+		var data string = "{}"
+		select {
+		case <-time.After(time.Second * 10):
+		case e := <-sseChan:
+			event = e.Event
+			id = e.Id
+			data = e.Data
+		}
+		if _, err := fmt.Fprintf(w, "event: %s\n", event); err != nil {
+			return
+		}
+		if id > 0 {
+			if _, err := fmt.Fprintf(w, "id: %d\n", id); err != nil {
+				return
+			}
+		}
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+			return
+		}
+
+		flusher.Flush()
+	}
+}
+
 // This api handler will respond with the current user object (including preferences) on a
-// GET request. On a POST or PUT request it will update the current user object.
+// GET request. On a POST it will create a new user (register)
+// On a PUT request it will update the current user object.
 func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int = -1
 	re := regexp.MustCompile(`/api/users/([^/]*)`)
@@ -728,12 +670,8 @@ func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if u == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 	if len(puidm) > 1 {
-		if puidm[1] == "me" {
+		if puidm[1] == "me" && u != nil {
 			userId = u.Id
 		} else {
 			userId, err = strconv.Atoi(puidm[1])
@@ -744,8 +682,29 @@ func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPost:
-		fallthrough
+		if u != nil {
+			http.Error(w, "Already Registered", http.StatusForbidden)
+			return
+		}
+		d := json.NewDecoder(r.Body)
+		err := d.Decode(&u)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ott := GenUUIDv4()
+		u, err := RegisterUser(u.Name, u.Email, ott)
+		if err == nil {
+			SendRegistrationEmail(u, ott)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	case http.MethodPut:
+		if u == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 		d := json.NewDecoder(r.Body)
 		err := d.Decode(&u)
 		if err != nil {
@@ -755,11 +714,15 @@ func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
 		u.Id = userId
 		UpdateUserPrefs(u)
 	case http.MethodGet:
+		if u == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		//TODO If userId == -1 then get a list of users
 		if userId <= 0 {
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return
 		}
-		//TODO If userId == -1 then get a list of users
 		ret, err := GetUser(userId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)

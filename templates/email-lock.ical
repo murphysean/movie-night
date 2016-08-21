@@ -13,7 +13,7 @@ ATTENDEE;CN={{.User.Name}};ID={{.User.Id}};HMAC={{.Hmac}}:MAILTO:{{.User.Email}}
 CREATED:{{.Now.Format "20060102T150405Z"}}
 DESCRIPTION:{{.Winner.Movie.Plot}}
 LAST-MODIFIED:{{.Now.UTC.Format "20060102T150405Z"}}
-LOCATION:2935 Thanksgiving Way, Lehi, UT 84043
+LOCATION:{{.Winner.Address}}
 STATUS:CONFIRMED
 SUMMARY:{{.Winner.Movie.Title}}
 TRANSP:OPAQUE

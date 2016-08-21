@@ -338,6 +338,8 @@ func DelayedActivityNotificationRoutine() {
 			go SendBuzzMessage("Movie-Night: New Votes!", buzz)
 			//Send Activity email to all
 			go SendActivityEmails(a.User, a.Votes, showtimes, bow, eow)
+			ScrubUser(a.User)
+			go sseManager.SendActivity(a.User, a.Votes)
 		}
 
 		//Sleep 30 seconds, or until the next activity is due

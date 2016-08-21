@@ -13,10 +13,11 @@ import (
 	"mime/quotedprintable"
 	"net/smtp"
 	"net/textproto"
+	"strings"
 	"time"
 )
 
-//LineBreakWriter
+// NewLineBreakWriter Creates a new line break writer
 func NewLineBreakWriter(writer io.Writer, width int) *LineBreakWriter {
 	r := new(LineBreakWriter)
 	r.w = writer
@@ -25,6 +26,7 @@ func NewLineBreakWriter(writer io.Writer, width int) *LineBreakWriter {
 	return r
 }
 
+// LineBreakWriter A writer that creates a line break every x characters
 type LineBreakWriter struct {
 	w         io.Writer
 	width     int
@@ -160,6 +162,13 @@ func SendLockEmail(to *User, winner *Showtime, weekOf time.Time) {
 	mac := hmac.New(sha256.New, []byte(*salt))
 	mac.Write([]byte(fmt.Sprintf("%d%d", to.Id, winner.Id)))
 	hmac := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	durstr := strings.TrimSpace(winner.Movie.Runtime)
+	durstr = strings.Replace(durstr, "min", "m", -1)
+	rt, err := time.ParseDuration(durstr)
+	if err != nil {
+		rt = time.Hour * 2
+	}
+	//TODO Think about whether to add an average trailer time to the movie, atm I think that the offset of credits makes this unneeded
 	params := struct {
 		User      *User
 		Winner    *Showtime
@@ -168,7 +177,7 @@ func SendLockEmail(to *User, winner *Showtime, weekOf time.Time) {
 		Now       time.Time
 		UrlPre    string
 		Hmac      string
-	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(time.Hour * 2), WeekOf: weekOf, Now: time.Now(), UrlPre: *appUrl, Hmac: hmac}
+	}{User: to, Winner: winner, WinnerEnd: winner.Showtime.Add(rt), WeekOf: weekOf, Now: time.Now(), UrlPre: *appUrl, Hmac: hmac}
 
 	//Abort sending if the user hasn't voted this period
 	bow, eow := GetBeginningAndEndOfWeekForTime(time.Now())
