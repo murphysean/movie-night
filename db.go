@@ -224,9 +224,9 @@ func ScrubUser(user *User) *User {
 var getShowtimeStmt *sql.Stmt
 
 const getShowtimeSql = `SELECT st.id, st.movieid, st.showtime, st.screen, st.location, st.address, st.preview, st.buy, m.id, m.imdb, m.title, m.json, IFNULL(SUM(v.votes),0) votes  
-FROM showtimes st, movies m, votes v
+FROM showtimes st, movies m 
+LEFT JOIN votes v ON st.id = v.showtimeid 
 WHERE st.movieid = m.id 
-AND st.id = v.showtimeid 
 AND st.id = ?`
 
 func GetShowtime(id int) (*Showtime, error) {
