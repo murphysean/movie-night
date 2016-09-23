@@ -26,22 +26,60 @@ import (
 	"time"
 )
 
+func contains(arr []string, s string) bool {
+	for _, v := range arr {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
 func AdminMovieHandler(w http.ResponseWriter, r *http.Request) {
-	for k, v := range r.URL.Query() {
-		if k == "imdb" {
-			for _, m := range v {
-				_, err := InsertMovieByIMDBId(m, r.URL.Query().Get("title"))
-				if err != nil {
-					log.Println("AdminMovieHandler:", err)
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-			}
+	//Lock this down to only users with the admin ability
+	u := LoggedInUser(r.Context())
+	if u == nil || !contains(u.Abilities, "admin.movie") {
+		http.Error(w, "Forbidden", http.StatusUnauthorized)
+		return
+	}
+	m := r.URL.Query().Get("imdb")
+	movie, err := InsertMovieByIMDBId(m, r.URL.Query().Get("title"))
+	if err != nil {
+		log.Println("AdminMovieHandler:1:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if r.URL.Query().Get("movieId") != "" {
+		oldMovieId, err := strconv.Atoi(r.URL.Query().Get("movieId"))
+		if err != nil {
+			log.Println("AdminMovieHandler:2:", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		//Migrate all showtimes linked to old movie id to newly created one
+		err = MigrateShowtimesToNewMovieId(oldMovieId, movie.Id)
+		if err != nil {
+			log.Println("AdminMovieHandler:3:", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		//Delete the old movie
+		err = DeleteMovie(oldMovieId)
+		if err != nil {
+			log.Println("AdminMovieHandler:4:", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 	}
 }
 
 func AdminShowtimeHandler(w http.ResponseWriter, r *http.Request) {
+	u := LoggedInUser(r.Context())
+	if u == nil || !contains(u.Abilities, "admin.showtimes") {
+		http.Error(w, "Forbidden", http.StatusUnauthorized)
+		return
+	}
 	var locations = []string{
 		"Lehi_Thanksgiving_Point_UT",
 		"Vineyard_Geneva_UT",
@@ -68,15 +106,20 @@ func AdminShowtimeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := time.ParseInLocation("01-02-2006", date, time.Local)
+	t, err := time.ParseInLocation("2006-01-02", date, time.Local)
 	if err != nil {
-		http.Error(w, "Couldn't parse date, must be in MM-DD-YYYY format\n"+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Couldn't parse date, must be in YYYY-MM-DD format\n"+err.Error(), http.StatusBadRequest)
 		return
 	}
 	fetchShowtimes(l, t)
 }
 
 func AdminLockHandler(w http.ResponseWriter, r *http.Request) {
+	u := LoggedInUser(r.Context())
+	if u == nil || !contains(u.Abilities, "admin.lock") {
+		http.Error(w, "Forbidden", http.StatusUnauthorized)
+		return
+	}
 	bow, eow := GetBeginningAndEndOfWeekForTime(time.Now())
 	winners, err := GetTopShowtimesForWeekOf(bow, eow, 1)
 	if err != nil {
@@ -111,21 +154,30 @@ func AdminLockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// From emails I've seen, DECLINED, ACCEPTED
-func RsvpResponseHandler(w http.ResponseWriter, r *http.Request) {
-	var u *User
-	c, err := r.Cookie("movienightsid")
-	if err == nil && sessions[c.Value] > 0 {
-		u, _ = GetUser(sessions[c.Value])
-	} else {
-		authHeader := r.Header.Get("Authorization")
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			if sessions[authHeader[7:]] > 0 {
-				fmt.Println("DEBUG: HEADER FOUND")
-				u, _ = GetUser(sessions[authHeader[7:]])
-			}
+func AdminDownvoteHandler(w http.ResponseWriter, r *http.Request) {
+	u := LoggedInUser(r.Context())
+	if u == nil || !contains(u.Abilities, "admin.downvote") {
+		http.Error(w, "Forbidden", http.StatusUnauthorized)
+		return
+	}
+	if r.URL.Query().Get("showtimeId") != "" {
+		showtimeId, err := strconv.Atoi(r.URL.Query().Get("showtimeId"))
+		if err != nil {
+			http.Error(w, "showtimeId not a valid int", http.StatusBadRequest)
+			return
+		}
+		err = AdminDownvote(showtimeId)
+		if err != nil {
+			log.Println("AdminDownvoteHandler:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
+}
+
+// From emails I've seen, DECLINED, ACCEPTED
+func RsvpResponseHandler(w http.ResponseWriter, r *http.Request) {
+	u := LoggedInUser(r.Context())
 	showtimeIdString := r.URL.Query().Get("showtimeId")
 	value := r.URL.Query().Get("value")
 	if showtimeIdString == "" || value == "" {
@@ -166,7 +218,7 @@ func RsvpResponseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var showtimeId int
-	_, err = fmt.Sscanf(showtimeIdString, "%d", &showtimeId)
+	_, err := fmt.Sscanf(showtimeIdString, "%d", &showtimeId)
 	if err != nil {
 		fmt.Println("Bad Rsvp Response: showtimeId int", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -180,12 +232,17 @@ func RsvpResponseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buzz := fmt.Sprintf("%s: %s", u.Name, value)
-	InsertRsvp(u.Id, st.Id, value)
-	go SendBuzzMessage("Movie-Night: RSVP", buzz)
-	ScrubUser(u)
-	sseManager.SendRSVP(u, value)
-	fmt.Println(buzz)
+	if r.Method == http.MethodGet {
+		buzz := fmt.Sprintf("%s: %s", u.Name, value)
+		InsertRsvp(u.Id, st.Id, value)
+		go SendBuzzMessage("Movie-Night: RSVP", buzz)
+		ScrubUser(u)
+		sseManager.SendRSVP(u, value)
+		fmt.Println(buzz)
+	}
+
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+
 }
 
 func EmailResponseHandler(w http.ResponseWriter, r *http.Request) {
@@ -370,18 +427,7 @@ func APIMoviesHandler(w http.ResponseWriter, r *http.Request) {
 // This api handler will respond with the available showtimes for the current week on a GET
 // request. On a POST or PUT request it will update the votes for the current user.
 func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
-	var u *User
-	c, err := r.Cookie("movienightsid")
-	if err == nil && sessions[c.Value] > 0 {
-		u, _ = GetUser(sessions[c.Value])
-	} else {
-		authHeader := r.Header.Get("Authorization")
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			if sessions[authHeader[7:]] > 0 {
-				u, _ = GetUser(sessions[authHeader[7:]])
-			}
-		}
-	}
+	u := LoggedInUser(r.Context())
 	n := time.Now()
 	bow, eow := GetBeginningAndEndOfWeekForTime(n)
 	switch r.Method {
@@ -417,7 +463,7 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Sum of all votes can't exceed 6", http.StatusBadRequest)
 			return
 		}
-		err = InsertVotesForUser(bow, eow, sessions[c.Value], votes)
+		err = InsertVotesForUser(bow, eow, u.Id, votes)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -437,6 +483,7 @@ func APIShowtimesHandler(w http.ResponseWriter, r *http.Request) {
 		votes = sts
 		activityChannel <- Activity{User: u, Votes: votes}
 	case http.MethodGet:
+		var err error
 		var sts []*Showtime
 		if u == nil {
 			sts, err = GetTopShowtimesForWeekOf(bow, eow, 10)
@@ -472,6 +519,14 @@ func APILoginHandler(w http.ResponseWriter, r *http.Request) {
 	if u, err := ValidateUser(loginObj.Email, loginObj.Password); err == nil {
 		nc := new(http.Cookie)
 		nc.Name = "movienightsid"
+		nc.Path = "/"
+		if uo, err := url.Parse(*appUrl); err == nil {
+			if strings.HasSuffix(uo.Path, "/") {
+				nc.Path = uo.Path[:len(uo.Path)-1]
+			} else {
+				nc.Path = uo.Path
+			}
+		}
 		nc.Value = GenUUIDv4()
 		nc.Expires = time.Now().Add(time.Hour * 24 * 365)
 		sessions[nc.Value] = u.Id
@@ -493,7 +548,7 @@ func APIResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		email := r.URL.Query().Get("email")
-		//TODO Much like registering, gen a ott and put it on the user object
+		//Much like registering, gen a ott and put it on the user object
 		ott := GenUUIDv4()
 		u, err := ResetPassword(email, ott)
 		if err == nil {
@@ -656,20 +711,10 @@ func APISSE(w http.ResponseWriter, r *http.Request) {
 // On a PUT request it will update the current user object.
 func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int = -1
+	var err error
 	re := regexp.MustCompile(`/api/users/([^/]*)`)
 	puidm := re.FindStringSubmatch(r.URL.Path)
-	var u *User
-	c, err := r.Cookie("movienightsid")
-	if err == nil && sessions[c.Value] > 0 {
-		u, _ = GetUser(sessions[c.Value])
-	} else {
-		authHeader := r.Header.Get("Authorization")
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			if sessions[authHeader[7:]] > 0 {
-				u, _ = GetUser(sessions[authHeader[7:]])
-			}
-		}
-	}
+	u := LoggedInUser(r.Context())
 	if len(puidm) > 1 {
 		if puidm[1] == "me" && u != nil {
 			userId = u.Id
@@ -724,6 +769,11 @@ func APIUsersHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ret, err := GetUser(userId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		ret.Abilities, err = GetUserAbilities(ret.Id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return

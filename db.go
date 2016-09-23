@@ -58,6 +58,7 @@ func InitDB(db *sql.DB) {
 	getUserStmt = mustPrepare(getUserSql)
 	getUserForEmailStmt = mustPrepare(getUserForEmailSql)
 	getUserForOttStmt = mustPrepare(getUserForOttSql)
+	getUserAbilitiesStmt = mustPrepare(getUserAbilitiesSql)
 	updateUserPrefsStmt = mustPrepare(updateUserPrefsSql)
 	getShowtimeStmt = mustPrepare(getShowtimeSql)
 	getShowtimesForWeekOfStmt = mustPrepare(getShowtimesForWeekOfSql)
@@ -69,6 +70,8 @@ func InitDB(db *sql.DB) {
 	insertMovieStmt = mustPrepare(insertMovieSql)
 	insertShowtimeStmt = mustPrepare(insertShowtimeSql)
 	insertRsvpStmt = mustPrepare(insertRsvpSql)
+	migrateShowtimeStmt = mustPrepare(migrateShowtimeSql)
+	deleteMovieStmt = mustPrepare(deleteMovieSql)
 }
 
 func mustPrepare(sql string) *sql.Stmt {
@@ -91,6 +94,10 @@ func ValidateUser(email, password string) (*User, error) {
 	err := validateUserStmt.QueryRow(email, sep).Scan(&u.Id, &u.Name, &u.Email)
 	if err != nil {
 		return nil, err
+	}
+	u.Abilities, err = GetUserAbilities(u.Id)
+	if err != nil {
+		return u, err
 	}
 	return u, nil
 }
@@ -142,6 +149,10 @@ func FinishRegistration(ott, password string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	u.Abilities, err = GetUserAbilities(u.Id)
+	if err != nil {
+		return u, err
+	}
 	return u, nil
 }
 
@@ -154,6 +165,10 @@ func GetUser(id int) (*User, error) {
 	err := getUserStmt.QueryRow(id).Scan(&u.Id, &u.Name, &u.Email, &u.WeeklyNotification, &u.LockNotification, &u.ActivityNotification, &u.GiftCard, &u.GiftCardPin, &u.RewardCard, &u.Zip, &u.Phone, &u.Carrier)
 	if err != nil {
 		return nil, err
+	}
+	u.Abilities, err = GetUserAbilities(u.Id)
+	if err != nil {
+		return u, err
 	}
 	return u, nil
 }
@@ -168,6 +183,10 @@ func GetUserForEmail(email string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	u.Abilities, err = GetUserAbilities(u.Id)
+	if err != nil {
+		return u, err
+	}
 	return u, nil
 }
 
@@ -181,7 +200,30 @@ func GetUserForOtt(ott string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	u.Abilities, err = GetUserAbilities(u.Id)
+	if err != nil {
+		return u, err
+	}
 	return u, nil
+}
+
+var getUserAbilitiesStmt *sql.Stmt
+
+const getUserAbilitiesSql = `SELECT ability FROM abilities WHERE userid = ?`
+
+func GetUserAbilities(userId int) ([]string, error) {
+	abilities := make([]string, 0)
+	rows, err := getUserAbilitiesStmt.Query(userId)
+	if err != nil {
+		return abilities, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ability string
+		rows.Scan(&ability)
+		abilities = append(abilities, ability)
+	}
+	return abilities, nil
 }
 
 func GetUsersForPreference(n PreferenceType) ([]*User, error) {
@@ -503,6 +545,24 @@ func InsertDummyMovie(title string) (*Movie, error) {
 	return InsertMovie(movie)
 }
 
+var migrateShowtimeStmt *sql.Stmt
+
+const migrateShowtimeSql = `UPDATE showtimes SET movieid = ? WHERE movieid = ?`
+
+func MigrateShowtimesToNewMovieId(oldMovieId, movieId int) error {
+	_, err := migrateShowtimeStmt.Exec(movieId, oldMovieId)
+	return err
+}
+
+var deleteMovieStmt *sql.Stmt
+
+const deleteMovieSql = `DELETE FROM movies WHERE id = ?`
+
+func DeleteMovie(movieId int) error {
+	_, err := deleteMovieStmt.Exec(movieId)
+	return err
+}
+
 var insertShowtimeStmt *sql.Stmt
 
 const insertShowtimeSql = `INSERT INTO showtimes (movieid, showtime, screen, location, address, preview, buy) VALUES (?,?,?,?,?,?,?)`
@@ -539,15 +599,16 @@ func LockVoteForWinner(bow, eow time.Time, winner *Showtime) error {
 	return InsertVotesForUser(bow, eow, 0, []*Showtime{v})
 }
 
+func AdminDownvote(showtimeId int) error {
+	_, err := insertVotesForUserStmt.Exec(0, showtimeId, -5)
+	return err
+}
+
 var insertRsvpStmt *sql.Stmt
 
 const insertRsvpSql = `INSERT INTO rsvps (userid,showtimeid,value) VALUES (?,?,?)`
 
 func InsertRsvp(userId int, showtimeId int, value string) error {
 	_, err := insertRsvpStmt.Exec(userId, showtimeId, value)
-	if err != nil {
-		return nil
-	}
-
-	return nil
+	return err
 }

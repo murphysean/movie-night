@@ -36,10 +36,10 @@ function initMe(){
 					break;
 				}
 			}
-			toggleUserUI(true, false);
+			toggleUserUI(true, this.response.abilities);
 		}else if(this.status == 401){
 			window.user = null;
-			toggleUserUI(false, false);
+			toggleUserUI(false, null);
 			var data = {
 				message: 'Login to get started',
 				actionHandler: showLoginModal,
@@ -152,6 +152,13 @@ function initShowtimes(){
 				star3.addEventListener("click",vote.bind(null, this.response[i].id, 3));
 				star3.setAttribute("name","s3");
 				star3.setAttribute("style","cursor:pointer");
+				var adv = document.createElement('i');
+				adv.className = 'material-icons md-24 md-dark md-inactive is-admin-dv';
+				adv.innerHTML = 'not_interested';
+				adv.addEventListener("click",adminDownvote.bind(null, this.response[i].id));
+				adv.setAttribute("name","adv");
+				adv.setAttribute("style","cursor:pointer");
+
 				var button = document.createElement('button');
 				button.id = 'showtime-' + this.response[i].id + '-more';
 				button.style = 'float:right;'
@@ -171,6 +178,9 @@ function initShowtimes(){
 					ul.innerHTML += '<li class="mdl-menu__item"><a onclick="rsvp(\'' + this.response[i].id  + '\', \'maybe\')">RSVP Maybe</a></li>';
 					ul.innerHTML += '<li class="mdl-menu__item"><a onclick="rsvp(\'' + this.response[i].id  + '\', \'no\')">RSVP No</a></li>';
 				}
+				ul.innerHTML += '<li class="is-admin-fix mdl-menu__item"><a onclick="showAdminFixDialog(\''+
+					this.response[i].movie.id+'\',\''+
+					this.response[i].movie.megaplexTitle+'\')">Fix</a></li>';
 
 				h2.appendChild(document.createTextNode(this.response[i].movie.Title));
 				p.innerHTML = this.response[i].location + '<br/>';
@@ -184,6 +194,7 @@ function initShowtimes(){
 				div.appendChild(star1);
 				div.appendChild(star2);
 				div.appendChild(star3);
+				div.appendChild(adv);
 
 				div.appendChild(button);
 				div.appendChild(ul);
@@ -238,9 +249,9 @@ function postVotes(votes){
 	showtimesxhr.responseType = 'json';
 	showtimesxhr.setRequestHeader("Content-Type","application/json;charset=UTF-8");
 	showtimesxhr.onload = function(e){
-	if(this.status == '200'){
-		document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:"Votes Posted"});
-	}
+		if(this.status == '200'){
+			document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:"Votes Posted"});
+		}
 	};
 	showtimesxhr.send(JSON.stringify(votes));
 }
@@ -330,7 +341,7 @@ function postLogin(fd){
 			document.querySelector('#settings-form input[name=giftcardpin]').value = this.response.giftCardPin;
 			document.querySelector('#settings-form input[name=rewardcard]').value = this.response.rewardCard;
 			document.querySelector('#settings-form input[name=zip]').value = this.response.zip;
-			toggleUserUI(true, false);
+			toggleUserUI(true, this.response.abilities);
 			//Kick off a redownload of the showtimes
 			initShowtimes()
 		}else{
@@ -415,6 +426,67 @@ function postResetPassword(fd){
 	}));
 }
 
+function adminLockVote(){
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'admin/lock', true);
+	xhr.onload = function(e){
+		if(this.status == '200'){
+			document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:"Voting Locked!"});
+		}
+	}
+	xhr.send();
+}
+
+function adminDownvote(showtimeId){
+	//Call the endpoint that will add -5 votes to this showtime
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'admin/downvote?showtimeId='+encodeURIComponent(showtimeId), true);
+	xhr.onload = function(e){
+		if(this.status == '200'){
+			document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:"Admin Downvote Succeeded!"});
+		}
+	}
+	xhr.send();
+}
+
+function showAdminFixDialog(movieId, movieTitle){
+	document.querySelector('#admin-fix-form-movie').value = movieId;
+	document.querySelector('#admin-fix-form-title').value = movieTitle;
+	document.querySelector('#admin-fix').showModal();
+}
+
+function adminFix(fd){
+	let imdb = fd.get('imdb');
+	let title = fd.get('title');
+	let movieId = fd.get('movieId');
+
+	var xhr = new XMLHttpRequest();
+	xhr.open('POST', 'admin/movie?imdb='+encodeURIComponent(imdb)+'&title='+encodeURIComponent(title)+'&movieId='+encodeURIComponent(movieId), true);
+	xhr.withCredentials = true;
+	xhr.onload = function(e){
+		if(this.status == '200'){
+			document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:"Movie Fixed!"});
+		}
+	}
+	xhr.send();
+	document.querySelector('#admin-fix').close();
+}
+
+function adminAdd(fd){
+	let d = fd.get('date');
+	let l = fd.get('location');
+
+	var xhr = new XMLHttpRequest();
+	xhr.open('POST', 'admin/showtime?date='+encodeURIComponent(d)+'&location='+encodeURIComponent(l), true);
+	xhr.onload = function(e){
+		if(this.status == '200'){
+			document.querySelector('.mdl-js-snackbar').MaterialSnackbar.showSnackbar({message:"Showtimes Added!"});
+		}
+	}
+	xhr.send();
+	document.querySelector('#admin-add').close();
+}
+
 function submitVotes(){
 	var votes = new Array();
 	showtimes = document.querySelectorAll('article[name=showtime]');
@@ -428,7 +500,27 @@ function submitVotes(){
 	postVotes(votes);
 }
 
-function toggleUserUI(loggedIn, isAdmin){
+function toggleUserUI(loggedIn, abilities){
+	let isAdminLock = false;
+	let isAdminDownvote = false;
+	let isAdminFix = false;
+	let isAdminAdd = false;
+	if(abilities != null){
+		for(let a of abilities){
+			if(a.startsWith('admin.lock')){
+				isAdminLock = true;
+			}
+			if(a.startsWith('admin.downvote')){
+				isAdminDownvote = true;
+			}
+			if(a.startsWith('admin.movie')){
+				isAdminFix = true;
+			}
+			if(a.startsWith('admin.showtime')){
+				isAdminAdd = true;
+			}
+		}
+	}
 	var css = '';
 	if(loggedIn){
 		css += ".user-present {}\n";
@@ -436,10 +528,28 @@ function toggleUserUI(loggedIn, isAdmin){
 		css += ".user-present { display:none !important}\n";
 	}
 
-	if(isAdmin){
-		css += ".is-admin {}\n";
+	if(isAdminLock){
+		css += ".is-admin-lock {}\n";
 	}else{
-		css += ".is-admin { display: none !important}\n";
+		css += ".is-admin-lock { display: none !important}\n";
+	}
+
+	if(isAdminDownvote){
+		css += ".is-admin-dv {}\n";
+	}else{
+		css += ".is-admin-dv { display: none !important}\n";
+	}
+
+	if(isAdminFix){
+		css += ".is-admin-fix {}\n";
+	}else{
+		css += ".is-admin-fix { display: none !important}\n";
+	}
+
+	if(isAdminAdd){
+		css += ".is-admin-add {}\n";
+	}else{
+		css += ".is-admin-add { display: none !important}\n";
 	}
 
 	loggedInStyleSheet.innerHTML = css;

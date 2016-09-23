@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -30,6 +32,8 @@ type User struct {
 	WeeklyNotification   bool `json:"weeklyNotification"`
 	LockNotification     bool `json:"lockNotification"`
 	ActivityNotification bool `json:"activityNotification"`
+
+	Abilities []string `json:"abilities,omitempty"`
 }
 
 type Showtime struct {
@@ -94,7 +98,7 @@ func (n PreferenceType) String() string {
 	return "undefined"
 }
 
-const version = `02.05.01`
+const version = `02.06.00`
 
 // The mnt variable is the global template variable
 var mnt *template.Template
@@ -178,6 +182,7 @@ func main() {
 	http.HandleFunc("/admin/movie", AdminMovieHandler)
 	http.HandleFunc("/admin/showtime", AdminShowtimeHandler)
 	http.HandleFunc("/admin/lock", AdminLockHandler)
+	http.HandleFunc("/admin/downvote", AdminDownvoteHandler)
 
 	http.HandleFunc("/callback/rsvp", RsvpResponseHandler)
 	http.HandleFunc("/callback/email", EmailResponseHandler)
@@ -190,7 +195,31 @@ func main() {
 	go DelayedActivityNotificationRoutine()
 
 	fmt.Println("Serving on :", *port)
-	log.Fatal(http.ListenAndServe(":"+fmt.Sprint(*port), nil))
+	log.Fatal(http.ListenAndServe(":"+fmt.Sprint(*port), http.HandlerFunc(authHandler)))
+}
+
+func LoggedInUser(c context.Context) *User {
+	return c.Value("liu").(*User)
+}
+
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var u *User
+	c, err := r.Cookie("movienightsid")
+	if err == nil && sessions[c.Value] > 0 {
+		u, _ = GetUser(sessions[c.Value])
+	} else {
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			if sessions[authHeader[7:]] > 0 {
+				fmt.Println("DEBUG: HEADER FOUND")
+				u, _ = GetUser(sessions[authHeader[7:]])
+			}
+		}
+	}
+	ctx = context.WithValue(ctx, "liu", u)
+
+	http.DefaultServeMux.ServeHTTP(w, r.WithContext(ctx))
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

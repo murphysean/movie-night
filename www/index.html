@@ -19,23 +19,13 @@
 			<div class="mdl-layout-spacer"></div>
 			<nav class="mdl-navigation">
 				<a class="mdl-navigation__link" onclick="showLoginModal()"><span id="my-remaining-votes" class="mdl-badge" data-badge="!">Login</span></a>
-				<a class="is-admin mdl-navigation__link" href="#">Admin</a>
+				<a class="is-admin-lock mdl-navigation__link" onclick="adminLockVote()">Lock Vote</a>
+				<a class="is-admin-lock mdl-navigation__link" onclick="document.querySelector('#admin-add').showModal()">Add Location</a>
 				<a class="mdl-navigation__link" onclick="document.querySelector('#settings').showModal()">Settings</a>
 			</nav>
 		</div>
 	</header>
 	<section id="showtimes" class="mdl-grid"></section>
-	<!--<div class="mdl-layout-spacer"></div>
-	<footer class="mdl-mini-footer">
-		<div class="mdl-mini-footer__left-section">
-			<div class="mdl-logo">Title</div>
-			<ul class="mdl-mini-footer__link-list">
-				<li><a href="#">Help</a></li>
-				<li><a href="#">Privacy & Terms</a></li>
-			</ul>
-		</div>
-	</footer>
-	</div>-->
 	<div id="toast" class="mdl-js-snackbar mdl-snackbar">
 		<div class="mdl-snackbar__text"></div>
 		<button class="mdl-snackbar__action" type="button"></button>
@@ -107,6 +97,40 @@
 		<div class="mdl-dialog__actions">
 			<button type="submit" class="mdl-button" form="resetpassword-form" value="submit" onclick="postResetPassword(new FormData(document.querySelector('#resetpassword-form')))">Submit</button>
 			<button type="button" class="mdl-button close" onclick="document.querySelector('#resetpassword').close()">Close</button>
+		</div>
+	</dialog>
+	<dialog id="admin-add" class="mdl-dialog">
+		<h4 class="mdl-dialog__title">Admin Add</h4>
+		<div class="mdl-dialog__content">
+		<form id="admin-add-form" method="dialog">
+			<p>Date:<input type="date" name="date"></p>
+			<p>Location:
+				<select name="location">
+					<option value="Lehi_Thanksgiving_Point_UT">Lehi - Thanksgiving Point</option>
+					<option value="Vineyard_Geneva_UT">Vineyard - Geneva</option>
+					<option value="Sandy_Jordan_Commons_UT">Sandy - Jordan Commons</option>
+					<option value="South_Jordan_The_District_UT">South Jordan - The District</option>
+				</select>
+			</p>
+		</form>
+		</div>
+		<div class="mdl-dialog__actions">
+			<button type="submit" class="mdl-button" form="admin-add-form" value="submit" onclick="adminAdd(new FormData(document.querySelector('#admin-add-form')))">Submit</button>
+			<button type="button" class="mdl-button close" onclick="document.querySelector('#admin-add').close()">Close</button>
+		</div>
+	</dialog>
+	<dialog id="admin-fix" class="mdl-dialog">
+		<h4 class="mdl-dialog__title">Admin Fix</h4>
+		<div class="mdl-dialog__content">
+		<form id="admin-fix-form" method="dialog">
+			<p>IMDB:<input type="text" name="imdb"></p>
+			<p>Title:<input id="admin-fix-form-title" type="text" name="title"></p>
+			<p>MovieId:<input id="admin-fix-form-movie" type="text" name="movieId"></p>
+		</form>
+		</div>
+		<div class="mdl-dialog__actions">
+			<button type="submit" class="mdl-button" form="admin-fix-form" value="submit" onclick="adminFix(new FormData(document.querySelector('#admin-fix-form')))">Submit</button>
+			<button type="button" class="mdl-button close" onclick="document.querySelector('#admin-fix').close()">Close</button>
 		</div>
 	</dialog>
 </body>
