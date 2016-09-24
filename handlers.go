@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./mp"
 	"bufio"
 	"bytes"
 	"crypto/hmac"
@@ -81,10 +82,10 @@ func AdminShowtimeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var locations = []string{
-		"Lehi_Thanksgiving_Point_UT",
-		"Vineyard_Geneva_UT",
-		"Sandy_Jordan_Commons_UT",
-		"South_Jordan_The_District_UT"}
+		mp.LocationThanksgivingPoint,
+		mp.LocationGeneva,
+		mp.LocationJordanCommons,
+		mp.LocationTheDistrict}
 	l := r.URL.Query().Get("location")
 	date := r.URL.Query().Get("date")
 	if l == "" {
@@ -521,7 +522,7 @@ func APILoginHandler(w http.ResponseWriter, r *http.Request) {
 		nc.Name = "movienightsid"
 		nc.Path = "/"
 		if uo, err := url.Parse(*appUrl); err == nil {
-			if strings.HasSuffix(uo.Path, "/") {
+			if len(uo.Path) > 1 && strings.HasSuffix(uo.Path, "/") {
 				nc.Path = uo.Path[:len(uo.Path)-1]
 			} else {
 				nc.Path = uo.Path
@@ -576,7 +577,6 @@ func APIResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 			nc.Expires = time.Now().Add(time.Hour * 24 * 365)
 			sessions[nc.Value] = u.Id
 			http.SetCookie(w, nc)
-			http.Redirect(w, r, "./", http.StatusSeeOther)
 			return
 		}
 	}

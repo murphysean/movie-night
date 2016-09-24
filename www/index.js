@@ -178,9 +178,10 @@ function initShowtimes(){
 					ul.innerHTML += '<li class="mdl-menu__item"><a onclick="rsvp(\'' + this.response[i].id  + '\', \'maybe\')">RSVP Maybe</a></li>';
 					ul.innerHTML += '<li class="mdl-menu__item"><a onclick="rsvp(\'' + this.response[i].id  + '\', \'no\')">RSVP No</a></li>';
 				}
+				let escapedTitle = this.response[i].movie.megaplexTitle.replace(/'/g, '\\\'');
 				ul.innerHTML += '<li class="is-admin-fix mdl-menu__item"><a onclick="showAdminFixDialog(\''+
 					this.response[i].movie.id+'\',\''+
-					this.response[i].movie.megaplexTitle+'\')">Fix</a></li>';
+					escapedTitle+'\')">Fix</a></li>';
 
 				h2.appendChild(document.createTextNode(this.response[i].movie.Title));
 				p.innerHTML = this.response[i].location + '<br/>';
@@ -380,7 +381,7 @@ function postSettings(fd){
 
 function postRegister(fd){
 	var rxhr = new XMLHttpRequest();
-	rxhr.open('POST', 'api/users', true);
+	rxhr.open('POST', 'api/users/', true);
 	rxhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 	rxhr.responseType = 'json';
 	rxhr.onload = function(e){
@@ -412,7 +413,7 @@ function postRequestResetPassword(email){
 
 function postResetPassword(fd){
 	var pxhr = new XMLHttpRequest();
-	pxhr.open('POST', 'api/users', true);
+	pxhr.open('POST', 'api/password', true);
 	pxhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 	pxhr.responseType = 'json';
 	pxhr.onload = function(e){

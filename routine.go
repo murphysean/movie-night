@@ -1,13 +1,10 @@
 package main
 
 import (
+	"./mp"
 	"fmt"
 	"github.com/jinzhu/now"
-	"golang.org/x/net/html"
 	"log"
-	"net/http"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 )
@@ -21,145 +18,30 @@ func GetShowtimesRoutine(day, hour, minute int) {
 		fmt.Println("Will update showtimes in", runAt.Sub(time.Now()))
 		time.Sleep(runAt.Sub(time.Now()))
 		tue := now.EndOfWeek().Add(time.Hour).AddDate(0, 0, 2).Local()
-		fetchShowtimes("Lehi_Thanksgiving_Point_UT", tue)
+		fetchShowtimes(mp.LocationThanksgivingPoint, tue)
 		time.Sleep(time.Hour)
 	}
 }
 
 func fetchShowtimes(location string, date time.Time) {
-	type ST struct {
-		Location         string
-		Address          string
-		Title            string
-		Day              string
-		Screen           string
-		Showtime         string
-		PreviewSeatsLink string
-		BuyTicketsLink   string
-	}
-
-	values := url.Values{}
-	values.Set("date", date.Format("01/02/2006"))
-	resp, err := http.Get("http://www.megaplextheatres.com/D-Theatre_Movietimes/" + location + "?" + values.Encode())
+	showtimes, err := mp.GetPerformances(location, date)
 	if err != nil {
-		log.Println("fetchShowtimes:1:", err)
+		log.Println("fetchShowtimes:1:\n", err)
 		return
 	}
-	defer resp.Body.Close()
-	z := html.NewTokenizer(resp.Body)
 
-	showtimes := make([]ST, 0)
-	currentLocation := ""
-	currentAddress := ""
-	currentDay := ""
-	currentScreen := ""
-	currentTitle := ""
-	currentShowtime := ""
-	currentPreview := ""
-
-TokenizeLoop:
-	for {
-		tt := z.Next()
-		switch tt {
-		case html.ErrorToken:
-			break TokenizeLoop
-		case html.StartTagToken:
-			t := z.Token()
-			switch t.Data {
-			case "h1":
-				if getTokenAttr(t, "class") == "pageTitle" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-						location := strings.TrimSpace(tn.Data)
-						currentLocation = strings.Replace(location, "\n", "", -1)
-					}
-				}
-			case "p":
-				if getTokenAttr(t, "class") == "theatreAddress" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-						address := strings.TrimSpace(tn.Data)
-						currentAddress = strings.Replace(address, "\n", "", -1)
-					}
-				}
-			case "option":
-				if getTokenAttr(t, "selected") == "selected" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-						currentDay = strings.TrimSpace(tn.Data)
-					}
-				}
-			case "span":
-				if getTokenAttr(t, "class") == "Title" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-						currentTitle = strings.TrimSpace(tn.Data)
-					}
-				}
-			case "div":
-				if getTokenAttr(t, "class") == "ChildFeatureFlagsTEXTCell" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-						s := strings.TrimSpace(tn.Data)
-						if s == "DIGITAL 2D SHOWTIMES" {
-							currentScreen = "2D"
-						} else {
-							currentScreen = strings.TrimSpace(tn.Data)
-						}
-					}
-				}
-				if getTokenAttr(t, "style") != "" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-
-						inner := strings.TrimSpace(tn.Data)
-						if strings.HasPrefix(inner, "For more information") {
-							if strings.Contains(inner, "3D") {
-								currentScreen = "3D"
-							} else if strings.Contains(inner, "D-BOX") {
-								currentScreen = "DBOX"
-							} else if strings.Contains(inner, "VIP") {
-								currentScreen = "VIP"
-							} else {
-								currentScreen = inner
-							}
-						}
-					}
-				}
-			case "td":
-				if getTokenAttr(t, "class") == "PerformancesShowTimeCell" {
-					if z.Next() == html.TextToken {
-						tn := z.Token()
-						currentShowtime = strings.TrimSpace(tn.Data)
-					}
-				}
-			case "a":
-				if getTokenAttr(t, "class") == "PreviewSeatsLink" {
-					currentPreview = getTokenAttr(t, "href")
-				}
-				if getTokenAttr(t, "class") == "BuyTicketsLink" {
-					st := ST{}
-					st.Location = currentLocation
-					st.Address = currentAddress
-					st.Title = currentTitle
-					st.Screen = currentScreen
-					st.Showtime = currentShowtime
-					st.Day = currentDay
-					st.PreviewSeatsLink = currentPreview
-					st.BuyTicketsLink = getTokenAttr(t, "href")
-					showtimes = append(showtimes, st)
-				}
-			}
-
-		}
-	}
-
-	movies := make(map[string]int)
+	movies := make(map[string]struct {
+		Id     int
+		Poster string
+	})
 	for _, st := range showtimes {
-		movies[st.Title] = 0
+		str := movies[""]
+		str.Id = 0
+		str.Poster = st.FeaturePoster
+		movies[st.FeatureTitle] = str
 	}
 
-	for k, _ := range movies {
+	for k, v := range movies {
 		//First check to see if I already have a movie for this title
 		var m *Movie
 		m, err = GetMovieByTitle(k)
@@ -175,30 +57,25 @@ TokenizeLoop:
 					return
 				}
 			}
+			if m.Poster == "N/A" || m.Poster == "" {
+				m.Poster = v.Poster
+				InsertMovie(m)
+			}
 		}
-		movies[k] = m.Id
+		moviek := movies[k]
+		moviek.Id = m.Id
+		movies[k] = moviek
 	}
 
 	for _, st := range showtimes {
-		//Day & Time -> Tuesday Apr 12, 2016 11:25 AM
-		t, err := time.ParseInLocation("Monday Jan 02, 2006 3:04 PM", st.Day+" "+st.Showtime, time.Local)
-		if err != nil {
-			log.Println("fetchShowtimes:3: Error Parsing time\n", err)
-			continue
+		screen := "2D"
+		if len(st.Formats) > 0 {
+			screen = st.Formats[0].Name
 		}
-		if t.Hour() >= 17 {
-			InsertShowtime(movies[st.Title], t, st.Screen, st.Location, st.Address, st.PreviewSeatsLink, st.BuyTicketsLink)
+		if st.Showtime.Hour() >= 17 {
+			InsertShowtime(movies[st.FeatureTitle].Id, st.Showtime, screen, mp.GetLocationFromId(location), mp.GetAddressFromId(location), "", "")
 		}
 	}
-}
-
-func getTokenAttr(t html.Token, attr string) string {
-	for _, a := range t.Attr {
-		if a.Key == attr {
-			return a.Val
-		}
-	}
-	return ""
 }
 
 // The weekly email routine sends Summary out Sat @ 7am MST

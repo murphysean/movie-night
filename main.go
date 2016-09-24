@@ -98,7 +98,7 @@ func (n PreferenceType) String() string {
 	return "undefined"
 }
 
-const version = `02.06.00`
+const version = `02.06.01`
 
 // The mnt variable is the global template variable
 var mnt *template.Template
