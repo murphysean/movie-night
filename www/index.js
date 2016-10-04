@@ -171,8 +171,7 @@ function initShowtimes(){
 				data.value = button.id;
 				ul.attributes.setNamedItem(data);
 				ul.innerHTML = '<li class="mdl-menu__item"><a href="http://www.imdb.com/title/'+this.response[i].movie.imdbID+'" target="_blank">IMDB</a></li>';
-				ul.innerHTML += '<li class="mdl-menu__item"><a href="http://www.megaplextheatres.com'+this.response[i].previewSeatsLink+'" target="_blank">Seating</a></li>';
-				ul.innerHTML += '<li class="mdl-menu__item"><a href="http://www.megaplextheatres.com'+this.response[i].buyTicketsLink+'" target="_blank">Purchase</a></li>';
+				ul.innerHTML += '<li class="mdl-menu__item"><a href="https://beta.megaplextheatres.com'+this.response[i].buyTicketsLink+'" target="_blank">Purchase</a></li>';
 				if(this.response[i].votes >= 1000){
 					ul.innerHTML += '<li class="mdl-menu__item"><a onclick="rsvp(\'' + this.response[i].id + '\', \'yes\')">RSVP Yes</a></li>';
 					ul.innerHTML += '<li class="mdl-menu__item"><a onclick="rsvp(\'' + this.response[i].id  + '\', \'maybe\')">RSVP Maybe</a></li>';

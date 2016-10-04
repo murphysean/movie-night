@@ -69,11 +69,15 @@ func fetchShowtimes(location string, date time.Time) {
 
 	for _, st := range showtimes {
 		screen := "2D"
+		if len(st.Amenities) > 0 {
+			screen = st.Amenities[0].Name
+		}
 		if len(st.Formats) > 0 {
 			screen = st.Formats[0].Name
 		}
+		pl := "/" + mp.GetShortNameFromId(location) + "/tickets/" + fmt.Sprintf("%d", st.Number)
 		if st.Showtime.Hour() >= 17 {
-			InsertShowtime(movies[st.FeatureTitle].Id, st.Showtime, screen, mp.GetLocationFromId(location), mp.GetAddressFromId(location), "", "")
+			InsertShowtime(movies[st.FeatureTitle].Id, st.Showtime, screen, mp.GetLocationFromId(location), mp.GetAddressFromId(location), fmt.Sprintf("%d", st.Number), pl)
 		}
 	}
 }

@@ -821,65 +821,27 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := url.Parse(showtime.PreviewSeatsLink)
+	theatreId := mp.GetIdFromLocation(showtime.Location)
+	num := showtime.PreviewSeatsLink
+
+	layout, err := mp.GetPerformanceLayout(num, theatreId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	perf := u.Query().Get("perf")
-	thCodeS := u.Query().Get("th_code")
-
-	thCode := 0
-	_, err = fmt.Sscanf(thCodeS, "%d", &thCode)
+	seating, err := mp.GetPerformanceSeating(num, theatreId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	outobj := struct {
-		Perf   string `json:"perf"`
-		ThCode int    `json:"th_code"`
-		Time   string `json:"time"`
-	}{Perf: perf, ThCode: thCode, Time: time.Now().Local().Format("Mon Jan 02 2006 15:04:05 GMT-0600 (MST)")}
+	width := layout.TotalColumnCount
+	height := layout.TotalRowCount
 
-	var out bytes.Buffer
-	e := json.NewEncoder(&out)
-	err = e.Encode(&outobj)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	resp, err := http.Post("http://www.megaplextheatres.com/webservices/Ticketing.svc/GetSeatStatus", "application/json; charset=UTF-8", &out)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		http.Error(w, fmt.Sprint("Invalid Status from megaplextheatres", resp.StatusCode), http.StatusServiceUnavailable)
-		return
-	}
-
-	j := struct {
-		D string `json:"d"`
-	}{}
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&j)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tokens := strings.Split(j.D, ",")
-
-	width := 0
-	height := 0
-
-	availability := make(map[string]int)
+	availability := struct {
+		Layout  mp.Layout  `json:"layout"`
+		Seating mp.Seating `json:"seating"`
+	}{Layout: layout, Seating: seating}
 
 	renderImg := false
 	cts := strings.Split(r.Header.Get("Accept"), ",")
@@ -890,66 +852,47 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, t := range tokens {
-		if len(t) == 0 {
-			log.Println("Recieved empty token")
-			http.Error(w, "Empty Token", http.StatusServiceUnavailable)
-			return
-		}
-		switch t[0:1] {
-		case "T":
-			//fmt.Println("Starting Theatre")
-		case "*":
-			height++
-			if t == "*R" {
-				//fmt.Println("\tAisle")
-			} else {
-				//fmt.Println("\tRow", t[2:])
-			}
-		case "S":
-			if height < 2 {
-				width++
-			}
-			switch t[len(t)-1:] {
-			case "1":
-				availability["Available"] = availability["Available"] + 1
-			case "6":
-				availability["Occupied"] = availability["Occupied"] + 1
-			}
-		}
-	}
-
 	w.Header().Set("Vary", "Accept")
 
 	if renderImg {
 		w.Header().Set("Cache-Control", "max-age=1800")
 		rgba := image.NewRGBA(image.Rect(0, 0, width, height))
-		x := 0
-		y := -1
-		for _, t := range tokens {
-			switch t[0:1] {
-			case "*":
-				y++
-				x = 0
-			case "S":
-				switch t[len(t)-1:] {
-				case "1":
-					rgba.Set(x, y, green)
-				case "2":
-					rgba.Set(x, y, black)
-				case "3":
-					rgba.Set(x, y, gray)
-				case "4":
-					rgba.Set(x, y, blue)
-				case "5":
-					rgba.Set(x, y, lightblue)
-				case "6":
-					rgba.Set(x, y, red)
-				default:
-					rgba.Set(x, y, black)
-				}
-				x++
+		for r := 0; r < height; r++ {
+			for c := 0; c < width; c++ {
+				rgba.Set(c, r, black)
 			}
+		}
+
+		for _, s := range layout.Seats {
+			switch s.Type {
+			case "GeneralAdmission":
+				rgba.Set(s.Column, s.Row, green)
+			case "Reserved":
+				rgba.Set(s.Column, s.Row, green)
+			case "Wheelchair":
+				rgba.Set(s.Column, s.Row, blue)
+			case "Companion":
+				rgba.Set(s.Column, s.Row, lightblue)
+			default:
+				rgba.Set(s.Column, s.Row, black)
+			}
+		}
+		for _, o := range seating.SeatInfo.Overrides {
+			switch o.Type {
+			case "Blocked":
+				rgba.Set(o.Column, o.Row, gray)
+			default:
+				rgba.Set(o.Column, o.Row, black)
+			}
+		}
+		for _, s := range seating.SeatInfo.Statuses {
+			switch s.Status {
+			case "Sold":
+				rgba.Set(s.Column, s.Row, red)
+			default:
+				rgba.Set(s.Column, s.Row, black)
+			}
+
 		}
 		err = png.Encode(w, rgba)
 		if err != nil {
