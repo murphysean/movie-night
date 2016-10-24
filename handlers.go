@@ -824,12 +824,12 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	theatreId := mp.GetIdFromLocation(showtime.Location)
 	num := showtime.PreviewSeatsLink
 
-	layout, err := mp.GetPerformanceLayout(num, theatreId)
+	layout, err := mp.GetLayout(num, theatreId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	seating, err := mp.GetPerformanceSeating(num, theatreId)
+	preview, err := mp.GetPreview(num, theatreId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -840,8 +840,8 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	availability := struct {
 		Layout  mp.Layout  `json:"layout"`
-		Seating mp.Seating `json:"seating"`
-	}{Layout: layout, Seating: seating}
+		Preview mp.Preview `json:"preview"`
+	}{Layout: layout, Preview: preview}
 
 	renderImg := false
 	cts := strings.Split(r.Header.Get("Accept"), ",")
@@ -877,7 +877,7 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 				rgba.Set(s.Column, s.Row, black)
 			}
 		}
-		for _, o := range seating.SeatInfo.Overrides {
+		for _, o := range preview.SeatInfo.Overrides {
 			switch o.Type {
 			case "Blocked":
 				rgba.Set(o.Column, o.Row, gray)
@@ -885,7 +885,7 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 				rgba.Set(o.Column, o.Row, black)
 			}
 		}
-		for _, s := range seating.SeatInfo.Statuses {
+		for _, s := range preview.SeatInfo.Statuses {
 			switch s.Status {
 			case "Sold":
 				rgba.Set(s.Column, s.Row, red)

@@ -75,20 +75,58 @@ func GetAddressFromId(id string) string {
 	}
 }
 
-const (
-	//id:3
-	FormatIMAX = "IMAX"
-	//id:4
-	FormatDBox = "D-BOX"
-)
+type Theatre struct {
+	HeroImage struct {
+		Path   string `json:"filePath"`
+		Height uint   `json:"height"`
+		Width  int    `json:"width"`
+	} `json:"HeroImage"`
+	Id        string `json:"TheatreId"`
+	Name      string `json:"name"`
+	Street    string `json:"street"`
+	City      string `json:"city"`
+	State     string `json:"state"`
+	Zip       string `json:"zip"`
+	Latitude  string `json:"latitude"`
+	Longitude string `json:"longitude"`
+	Phone     string `json:"phone"`
+}
 
-const (
-	//id:7
-	AmenityLuxury = "Luxury"
-)
+func GetTheatres() ([]Theatre, error) {
+	ret := make([]Theatre, 0)
 
-type Movie struct {
-	FeatureCode    int    `json:"featureCode"`
+	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/all")
+	if err != nil {
+		return ret, err
+	}
+	defer resp.Body.Close()
+
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(&ret)
+	return ret, err
+}
+
+func GetTheatre(theatreId string) (Theatre, error) {
+	ts := make([]Theatre, 0)
+
+	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/all")
+	if err != nil {
+		return Theatre{}, err
+	}
+	defer resp.Body.Close()
+
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(&ts)
+	for _, v := range ts {
+		if v.Id == theatreId {
+			return v, err
+		}
+	}
+	return Theatre{}, errors.New("Not Found")
+}
+
+type Feature struct {
+	FeatureCode    uint   `json:"featureCode"`
 	Rating         string `json:"rating"`
 	PrefeatureTime uint   `json:"prefeatureTime"`
 	Runtime        uint   `json:"runtime"`
@@ -96,6 +134,9 @@ type Movie struct {
 	Synopsis       string `json:"synopsis"`
 	Tagline        string `json:"tagline"`
 	Website        string `json:"website"`
+
+	Formats []string `json:"formats"`
+	Genres  []string `json:"genres"`
 
 	Backdrop struct {
 		Small  string `json:"small"`
@@ -125,58 +166,128 @@ type Movie struct {
 		} `json:"large"`
 	} `json:"trailers"`
 
-	Performance Performance `json:"performance"`
-
-	TicketTypes struct {
-		TicketTypes []struct {
-			Id                   string  `json:"id"`
-			AgeRestricted        bool    `json:"ageRestricted"`
-			Discount             bool    `json:"discountFlag"`
-			FriendlyName         string  `json:"friendlyName"`
-			OnHoldTicketType     bool    `json:"isOnHoldTicketType"`
-			ReservedSeating      bool    `json:"isReservedSeating"`
-			Name                 string  `json:"name"`
-			Price                float64 `json:"price"`
-			PricedTicketQty      uint    `json:"pricedTicketQty"`
-			PricedTicketRequired bool    `json:"pricedTicketRequired"`
-			Tax                  float64 `json:"tax"`
-		} `json:"TicketTypes"`
-		MaxHoldTickets   uint `json:"maxHoldTickets"`
-		MaxOnHoldTickets uint `json:"maxOnHoldTickets"`
-		MaxTickets       uint `json:"maxTickets"`
-	} `json:"ticketTypes"`
-
 	Performances []Performance `json:"performances"`
 }
 
 type Performance struct {
-	AgeRestriction int `json:"ageRestriction"`
-	Amenities      []struct {
-		Id   int    `json:"id"`
-		Name string `json:"name"`
-	} `json:"amenities"`
-	Auditorium             string `json:"auditorium"`
-	AuditoriumFriendlyName string `json:"auditoriumFriendlyName"`
-	BusinessDate           string `json:"businessDate"`
-	DDDFlag                bool   `json:"dDDFlag"`
-	DTSSoundFlag           bool   `json:"dTSSoundFlag"`
-	DolbySoundFlag         bool   `json:"dolbySoundFlag"`
-	FeatureCode            int    `json:"featureCode"`
-	FeatureTitle           string `json:"-"`
-	FeaturePoster          string `json:"-"`
-	Formats                []struct {
-		Id   int    `json:"id"`
-		Name string `json:"name"`
-	} `json:"formats"`
-	IMAXFlag            bool      `json:"imaxFlag"`
-	IsReservedSeating   bool      `json:"isReservedSeating"`
-	Number              int       `json:"number"`
-	PassesAllowed       bool      `json:"passesAllowed"`
-	SDDSSoundFlag       bool      `json:"sDDSSoundFlag"`
-	Showtime            time.Time `json:"showTime"`
-	Status              string    `json:"status"`
-	THXSoundFlag        bool      `json:"tHXSoundFlag"`
-	VariableSeatPricing bool      `json:"variableSeatPricing"`
+	Id                     uint      `json:"id"`
+	AgeRestriction         uint      `json:"ageRestriction"`
+	Amenities              []string  `json:"amenities"`
+	Auditorium             string    `json:"auditorium"`
+	AuditoriumFriendlyName string    `json:"auditoriumFriendlyName"`
+	BusinessDate           string    `json:"businessDate"`
+	DDDFlag                bool      `json:"dDDFlag"`
+	DTSSoundFlag           bool      `json:"dTSSoundFlag"`
+	DolbySoundFlag         bool      `json:"dolbySoundFlag"`
+	FeatureCode            uint      `json:"featureCode"`
+	FeatureTitle           string    `json:"-"`
+	FeaturePoster          string    `json:"-"`
+	Formats                []string  `json:"formats"`
+	IMAXFlag               bool      `json:"imaxFlag"`
+	ReservedSeating        bool      `json:"isReservedSeating"`
+	Number                 int       `json:"number"`
+	PassesAllowed          bool      `json:"passesAllowed"`
+	SDDSSoundFlag          bool      `json:"sDDSSoundFlag"`
+	Showtime               time.Time `json:"showTime"`
+	Status                 string    `json:"status"`
+	THXSoundFlag           bool      `json:"tHXSoundFlag"`
+	VariableSeatPricing    bool      `json:"variableSeatPricing"`
+}
+
+type Schedule struct {
+	AvailableDates   []string  `json:"availableDates"`
+	AvailableFormats []string  `json:"availableFormats"`
+	AvailableRatings []string  `json:"availableRatings"`
+	Schedule         []Feature `json:"schedule"`
+}
+
+func GetSchedule(theatreId string) (Schedule, error) {
+	ret := Schedule{}
+
+	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/schedule/" + theatreId)
+	if err != nil {
+		return ret, err
+	}
+	defer resp.Body.Close()
+
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(&ret)
+	if err != nil {
+		return ret, err
+	}
+	return ret, nil
+}
+
+func GetPerformances(theatreId string) ([]Performance, error) {
+	s, err := GetSchedule(theatreId)
+	if err != nil {
+		return []Performance{}, err
+	}
+	ret := make([]Performance, 0)
+	for _, f := range s.Schedule {
+		for _, p := range f.Performances {
+			p.FeatureCode = f.FeatureCode
+			p.FeatureTitle = f.Title
+			p.FeaturePoster = f.Poster.Large
+			ret = append(ret, p)
+		}
+	}
+	return ret, nil
+}
+
+func GetPerformancesForDay(theatreId string, date time.Time) ([]Performance, error) {
+	ret := make([]Performance, 0)
+	performances, err := GetPerformances(theatreId)
+	if err != nil {
+		return performances, err
+	}
+	ds := date.Local().Format("20060102")
+	for _, p := range performances {
+		if ds == p.BusinessDate {
+			ret = append(ret, p)
+		}
+	}
+	return ret, nil
+}
+
+type TicketTypes struct {
+	TicketTypes []struct {
+		Id                   string  `json:"id"`
+		AgeRestricted        bool    `json:"ageRestricted"`
+		Discount             bool    `json:"discountFlag"`
+		FriendlyName         string  `json:"friendlyName"`
+		OnHoldTicketType     bool    `json:"isOnHoldTicketType"`
+		ReservedSeating      bool    `json:"isReservedSeating"`
+		Name                 string  `json:"name"`
+		Price                float64 `json:"price"`
+		PricedTicketQty      uint    `json:"pricedTicketQty"`
+		PricedTicketRequired bool    `json:"pricedTicketRequired"`
+		Tax                  float64 `json:"tax"`
+	} `json:"TicketTypes"`
+	MaxHoldTickets   uint `json:"maxHoldTickets"`
+	MaxOnHoldTickets uint `json:"maxOnHoldTickets"`
+	MaxTickets       uint `json:"maxTickets"`
+}
+
+type SinglePerformance struct {
+	Feature     Feature     `json:"feature"`
+	Performance Performance `json:"performance"`
+	Theatre     Theatre     `json:"theatre"`
+	TicketTypes TicketTypes `json:"TicketTypes"`
+}
+
+func GetPerformance(performanceNumber string) (SinglePerformance, error) {
+	ret := SinglePerformance{}
+
+	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/theatres/tickets/%s", performanceNumber))
+	if err != nil {
+		return ret, err
+	}
+	defer resp.Body.Close()
+
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(&ret)
+	return ret, err
 }
 
 type Layout struct {
@@ -195,7 +306,21 @@ type Layout struct {
 	//Zones []
 }
 
-type Seating struct {
+func GetLayout(performanceNumber string, theatreId string) (Layout, error) {
+	ret := Layout{}
+
+	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/performances/seats/layout/%s/%s", performanceNumber, theatreId))
+	if err != nil {
+		return ret, err
+	}
+	defer resp.Body.Close()
+
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(&ret)
+	return ret, err
+}
+
+type Preview struct {
 	Id     string `json:"id"`
 	Result struct {
 		Code    int `json:"code"`
@@ -215,38 +340,10 @@ type Seating struct {
 	} `json:"seatInfo"`
 }
 
-func GetPerformances(theatreId string, date time.Time) ([]Performance, error) {
-	ret := make([]Performance, 0)
-	var w = struct {
-		Schedule map[string][]Movie `json:"schedule"`
-	}{}
+func GetPreview(performanceNumber string, theatreId string) (Preview, error) {
+	ret := Preview{}
 
-	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/schedule?theatreId=" + theatreId)
-	if err != nil {
-		return ret, err
-	}
-	defer resp.Body.Close()
-
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&w)
-	if err != nil {
-		return ret, err
-	}
-	for _, m := range w.Schedule[date.Local().Format("20060102")] {
-		for _, p := range m.Performances {
-			p.FeatureTitle = m.Title
-			p.FeaturePoster = m.Poster.Large
-			ret = append(ret, p)
-		}
-	}
-	return ret, nil
-}
-
-func GetPerformance(performanceNumber string, theatreId string) (Performance, error) {
-	theatreName := GetShortNameFromId(theatreId)
-	ret := Performance{}
-
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/ticketing/performance?performanceNumber=%s&theatreName=%s", performanceNumber, theatreName))
+	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/features/performances/seats/preview/%s/%s", performanceNumber, theatreId))
 	if err != nil {
 		return ret, err
 	}
@@ -255,80 +352,4 @@ func GetPerformance(performanceNumber string, theatreId string) (Performance, er
 	d := json.NewDecoder(resp.Body)
 	err = d.Decode(&ret)
 	return ret, err
-}
-
-func GetPerformanceLayout(performanceNumber string, theatreId string) (Layout, error) {
-	ret := Layout{}
-
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/performance/layout?performanceNumber=%s&theatreId=%s", performanceNumber, theatreId))
-	if err != nil {
-		return ret, err
-	}
-	defer resp.Body.Close()
-
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&ret)
-	return ret, err
-}
-
-func GetPerformanceSeating(performanceNumber string, theatreId string) (Seating, error) {
-	ret := Seating{}
-
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/performance/previewseats?performanceNumber=%s&theatreId=%s", performanceNumber, theatreId))
-	if err != nil {
-		return ret, err
-	}
-	defer resp.Body.Close()
-
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&ret)
-	return ret, err
-}
-
-type Theatre struct {
-	HeroImage struct {
-		Path string `json:"filePath"`
-	} `json:"HeroImage"`
-	TheatreId string `json:"TheatreId"`
-	City      string `json:"city"`
-	Latitude  string `json:"latitude"`
-	Longitude string `json:"longitude"`
-	Name      string `json:"name"`
-	Phone     string `json:"phone"`
-	State     string `json:"state"`
-	Street    string `json:"street"`
-	Zip       string `json:"zip"`
-}
-
-func GetTheatres() ([]Theatre, error) {
-	ret := make([]Theatre, 0)
-
-	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/all")
-	if err != nil {
-		return ret, err
-	}
-	defer resp.Body.Close()
-
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&ret)
-	return ret, err
-}
-
-func GetTheatre(theatreId string) (Theatre, error) {
-	ts := make([]Theatre, 0)
-
-	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/all")
-	if err != nil {
-		return Theatre{}, err
-	}
-	defer resp.Body.Close()
-
-	d := json.NewDecoder(resp.Body)
-	err = d.Decode(&ts)
-	for _, v := range ts {
-		if v.TheatreId == theatreId {
-			return v, err
-		}
-	}
-	return Theatre{}, errors.New("Not Found")
 }

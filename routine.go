@@ -24,7 +24,7 @@ func GetShowtimesRoutine(day, hour, minute int) {
 }
 
 func fetchShowtimes(location string, date time.Time) {
-	showtimes, err := mp.GetPerformances(location, date)
+	showtimes, err := mp.GetPerformancesForDay(location, date)
 	if err != nil {
 		log.Println("fetchShowtimes:1:\n", err)
 		return
@@ -70,10 +70,10 @@ func fetchShowtimes(location string, date time.Time) {
 	for _, st := range showtimes {
 		screen := "2D"
 		if len(st.Amenities) > 0 {
-			screen = st.Amenities[0].Name
+			screen = st.Amenities[0]
 		}
 		if len(st.Formats) > 0 {
-			screen = st.Formats[0].Name
+			screen = st.Formats[0]
 		}
 		pl := "/" + mp.GetShortNameFromId(location) + "/tickets/" + fmt.Sprintf("%d", st.Number)
 		if st.Showtime.Hour() >= 17 {
