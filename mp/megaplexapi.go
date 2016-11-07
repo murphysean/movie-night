@@ -309,7 +309,7 @@ type Layout struct {
 func GetLayout(performanceNumber string, theatreId string) (Layout, error) {
 	ret := Layout{}
 
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/performances/seats/layout/%s/%s", performanceNumber, theatreId))
+	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/features/performances/seats/layout/%s/%s", performanceNumber, theatreId))
 	if err != nil {
 		return ret, err
 	}

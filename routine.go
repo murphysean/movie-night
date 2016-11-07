@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/now"
 	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -68,14 +69,14 @@ func fetchShowtimes(location string, date time.Time) {
 	}
 
 	for _, st := range showtimes {
-		screen := "2D"
+		screen := st.Auditorium
 		if len(st.Amenities) > 0 {
-			screen = st.Amenities[0]
+			screen = strings.Join([]string{screen, strings.Join(st.Amenities, ",")}, ",")
 		}
 		if len(st.Formats) > 0 {
-			screen = st.Formats[0]
+			screen = strings.Join([]string{screen, strings.Join(st.Formats, ",")}, ",")
 		}
-		pl := "/" + mp.GetShortNameFromId(location) + "/tickets/" + fmt.Sprintf("%d", st.Number)
+		pl := "/" + mp.GetShortNameFromId(location) + "/tickets/" + fmt.Sprintf("%d", st.Id)
 		if st.Showtime.Hour() >= 17 {
 			InsertShowtime(movies[st.FeatureTitle].Id, st.Showtime, screen, mp.GetLocationFromId(location), mp.GetAddressFromId(location), fmt.Sprintf("%d", st.Number), pl)
 		}

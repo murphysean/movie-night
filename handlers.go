@@ -826,11 +826,13 @@ func APIPreviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	layout, err := mp.GetLayout(num, theatreId)
 	if err != nil {
+		log.Printf("ApiPreview:Layout: Num: %s, Theatre: %s", num, theatreId)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	preview, err := mp.GetPreview(num, theatreId)
 	if err != nil {
+		log.Printf("ApiPreview:Preview: Num: %s, Theatre: %s", num, theatreId)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
