@@ -10,4 +10,4 @@ No: {{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac=
 
 Maybe: {{.UrlPre}}callback/rsvp?userId={{.User.Id}}&showtimeId={{.Winner.Id}}&hmac={{.Hmac}}&value=TENATIVE"
 
-Purchace Tickets Here: https://beta.megaplextheatres.com{{.Winner.BuyTicketsLink}}
+Purchace Tickets Here: https://www.megaplextheatres.com{{.Winner.BuyTicketsLink}}

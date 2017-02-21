@@ -69,7 +69,7 @@ func fetchShowtimes(location string, date time.Time) {
 	}
 
 	for _, st := range showtimes {
-		screen := st.Auditorium
+		screen := st.Auditorium.Name
 		if len(st.Amenities) > 0 {
 			screen = strings.Join([]string{screen, strings.Join(st.Amenities, ",")}, ",")
 		}

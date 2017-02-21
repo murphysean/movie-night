@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"time"
 )
 
@@ -95,7 +96,7 @@ type Theatre struct {
 func GetTheatres() ([]Theatre, error) {
 	ret := make([]Theatre, 0)
 
-	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/all")
+	resp, err := http.Get("https://www.megaplextheatres.com/api/theatres/all")
 	if err != nil {
 		return ret, err
 	}
@@ -109,7 +110,7 @@ func GetTheatres() ([]Theatre, error) {
 func GetTheatre(theatreId string) (Theatre, error) {
 	ts := make([]Theatre, 0)
 
-	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/all")
+	resp, err := http.Get("https://www.megaplextheatres.com/api/theatres/all")
 	if err != nil {
 		return Theatre{}, err
 	}
@@ -170,10 +171,14 @@ type Feature struct {
 }
 
 type Performance struct {
-	Id                     uint      `json:"id"`
-	AgeRestriction         uint      `json:"ageRestriction"`
-	Amenities              []string  `json:"amenities"`
-	Auditorium             string    `json:"auditorium"`
+	Id             uint     `json:"id"`
+	AgeRestriction uint     `json:"ageRestriction"`
+	Amenities      []string `json:"amenities"`
+	Auditorium     struct {
+		InfoPage string   `json:"sponsors"`
+		Name     string   `json:"name"`
+		Sponsors []string `json:"sponsors"`
+	} `json:"auditorium"`
 	AuditoriumFriendlyName string    `json:"auditoriumFriendlyName"`
 	BusinessDate           string    `json:"businessDate"`
 	DDDFlag                bool      `json:"dDDFlag"`
@@ -204,11 +209,14 @@ type Schedule struct {
 func GetSchedule(theatreId string) (Schedule, error) {
 	ret := Schedule{}
 
-	resp, err := http.Get("https://beta.megaplextheatres.com/api/theatres/schedule/" + theatreId)
+	resp, err := http.Get("https://www.megaplextheatres.com/api/theatres/schedule/" + theatreId)
 	if err != nil {
 		return ret, err
 	}
 	defer resp.Body.Close()
+
+	b, _ := httputil.DumpResponse(resp, true)
+	fmt.Printf("%s\n", b)
 
 	d := json.NewDecoder(resp.Body)
 	err = d.Decode(&ret)
@@ -279,7 +287,7 @@ type SinglePerformance struct {
 func GetPerformance(performanceNumber string) (SinglePerformance, error) {
 	ret := SinglePerformance{}
 
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/theatres/tickets/%s", performanceNumber))
+	resp, err := http.Get(fmt.Sprintf("https://www.megaplextheatres.com/api/theatres/tickets/%s", performanceNumber))
 	if err != nil {
 		return ret, err
 	}
@@ -309,7 +317,7 @@ type Layout struct {
 func GetLayout(performanceNumber string, theatreId string) (Layout, error) {
 	ret := Layout{}
 
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/features/performances/seats/layout/%s/%s", performanceNumber, theatreId))
+	resp, err := http.Get(fmt.Sprintf("https://www.megaplextheatres.com/api/features/performances/seats/layout/%s/%s", performanceNumber, theatreId))
 	if err != nil {
 		return ret, err
 	}
@@ -343,7 +351,7 @@ type Preview struct {
 func GetPreview(performanceNumber string, theatreId string) (Preview, error) {
 	ret := Preview{}
 
-	resp, err := http.Get(fmt.Sprintf("https://beta.megaplextheatres.com/api/features/performances/seats/preview/%s/%s", performanceNumber, theatreId))
+	resp, err := http.Get(fmt.Sprintf("https://www.megaplextheatres.com/api/features/performances/seats/preview/%s/%s", performanceNumber, theatreId))
 	if err != nil {
 		return ret, err
 	}
